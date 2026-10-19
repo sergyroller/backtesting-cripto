@@ -5,6 +5,7 @@ Sistema modular de backtesting de acumulación de criptomonedas (v1: BTC/EUR con
 - **Documentos de lectura obligatoria antes de tocar código:**
   1. `docs/planificacion.md` — arquitectura, contratos, modelos, fuentes de datos verificadas, fórmulas, plan de pruebas y fases de implementación.
   2. `docs/notas-arquitectura.md` — **bitácora de revisiones del arquitecto, estado de cada fase y checklist obligatorio de la fase activa**. Léelo siempre al empezar.
+  3. `docs/design/DESIGN_SYSTEM.md` (junto con `docs/design/tokens.css` y `docs/design/plotly-theme.js`) — **especificación UX/UI validada** de lectura obligatoria para las fases F5 y F6.
 - **Idioma:**
   - **Comunicación, documentación (`docs/`, `README.md`) e interfaz web:** siempre en **español**.
   - **Código fuente (`src/`, `tests/`, nombres de carpetas, módulos, clases, funciones, tablas y variables):** siempre en **inglés**.
@@ -14,6 +15,6 @@ Sistema modular de backtesting de acumulación de criptomonedas (v1: BTC/EUR con
   - El inicio disponible depende de los datos requeridos por cada estrategia (`2018-02-01` para Fear & Greed; estrategias futuras podrán empezar antes).
   - Compras **100 % directas** (sin comisiones ni deslizamiento, ni duplicidad bruto/neto) y **sin benchmark DCA acoplado** (cada estrategia es independiente).
   - Dinero y cantidades: `decimal.Decimal` (BTC cuantificado a **8 decimales** con `ROUND_DOWN`; EUR y porcentajes a **2 decimales** con `ROUND_HALF_UP`), nunca `float`.
-- **Apuntes activos del arquitecto (post-F1):**
-  - **Antes de empezar F2 (Punto 0 de `docs/notas-arquitectura.md`):** corrige `StrategyContext` en `src/backtesting_cripto/domain/contracts.py` para que incluya `asset`, `start_date`, `end_date`, `params`, `indicators` y `prices: PriceSeries | None = None` (tal como exigen las Secciones E.2 y E.4 de `docs/planificacion.md`), y limita la validación `[0, 100]` de `IndicatorValue` a `self.indicator == "fear_greed"`.
-  - **Fase actual:** **F2 — Ingesta, validación y almacenamiento de datos** (sigue el checklist completo de F2 en `docs/notas-arquitectura.md`, incluyendo ajustar `.gitignore` para ignorar solo `data/*.sqlite3*` y versionar `data/raw/`).
+- **Apuntes activos del arquitecto (post-F2):**
+  - **Fases F0, F1 y F2:** ✅ Aprobadas (73 tests en verde).
+  - **Fase actual:** **F3 — Motor, cartera y métricas** (`engine/calendar.py`, `engine/execution.py`, `engine/portfolio.py`, `engine/runner.py`, `metrics/calculator.py`, `validation/consistency_checks.py` y `tests/unit/test_engine_and_metrics.py`). Sigue el checklist completo de F3 en `docs/notas-arquitectura.md`.

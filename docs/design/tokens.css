@@ -1,0 +1,152 @@
+/* ==========================================================================
+   tokens.css — REFERENCIA del sistema de diseño (docs/design/DESIGN_SYSTEM.md)
+   Estado: especificación para F6. Copiar a web/static/css/tokens.css al
+   implementar. Es el ÚNICO archivo con valores hex: el resto del CSS
+   consume estos tokens.
+   ========================================================================== */
+
+@layer tokens {
+  :root {
+    /* --- Marca y semánticos compartidos (iguales en ambos temas) --- */
+    --color-brand: #0DC3A4;
+    --color-positive: #0DC3A4;
+
+    /* --- Superficies y texto (tema claro) --- */
+    --color-bg-app: #F5F7F9;
+    --color-surface-1: #FFFFFF;
+    --color-surface-2: #F0F2F5;
+    --color-text-1: #171B22;
+    --color-text-2: #5A6372;
+    --color-text-3: #8A93A1;
+    --color-text-disabled: #9AA2AF;
+    --color-border-subtle: #E4E8EE;
+    --color-border-control: #7D8694;
+    --color-border-strong: #CBD2DC;
+    --color-tooltip-bg: #1B212B;
+    --color-tooltip-text: #F4F6F8;
+
+    /* --- Semánticos (tema claro) --- */
+    --color-positive-text: #0A7C68;
+    --color-positive-subtle: #E3F6F1;
+    --color-negative: #CE2C31;
+    --color-negative-subtle: #FDEEEF;
+    --color-error: #CE2C31;
+    --color-error-subtle: #FDEEEF;
+    --color-info: #2F5FC7;
+    --color-info-subtle: #E9EFFC;
+    --color-warning: #946200;
+    --color-warning-subtle: #FBF1DC;
+    --color-fng: #6D5FD3;
+
+    /* --- Acción (tema claro) --- */
+    --color-action-bg: #171B22;
+    --color-action-text: #FFFFFF;
+    --color-action-bg-hover: #2A303B;
+    --color-link: #0A7C68;
+    --color-focus: #0A7C68;
+
+    /* --- Gráficos: cuadrícula decorativa (exenta de contraste AA; §5.5) --- */
+    --color-chart-grid: #E8ECF1;
+
+    /* --- Tipografía --- */
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono",
+      Menlo, Consolas, monospace;
+
+    --text-xs: 0.75rem;      /* 12 px — mínimo absoluto */
+    --text-sm: 0.8125rem;    /* 13 px */
+    --text-base: 1rem;       /* 16 px */
+    --text-md: 1.125rem;     /* 18 px */
+    --text-lg: 1.25rem;      /* 20 px */
+    --text-xl: 1.5rem;       /* 24 px */
+    --text-2xl: 1.875rem;    /* 30 px */
+    --text-3xl: 2.25rem;     /* 36 px */
+
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    /* --- Espaciado (base 4 px) --- */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    /* --- Radios, bordes, sombras --- */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+    --border-width: 1px;
+    --shadow-1: 0 1px 2px rgb(23 27 34 / 0.06);
+    --shadow-2: 0 8px 24px rgb(23 27 34 / 0.12);
+
+    /* --- Movimiento --- */
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-slow: 240ms;
+    --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+    /* --- Layout --- */
+    --container-max: 1280px;
+    --header-height: 3.5rem;   /* 56 px móvil */
+    --bottomnav-height: 4rem;  /* 64 px */
+
+    color-scheme: light;
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --header-height: 4rem;   /* 64 px */
+    }
+  }
+
+  /* --- Tema oscuro --- */
+  [data-theme="dark"] {
+    --color-bg-app: #0E131A;
+    --color-surface-1: #161C25;
+    --color-surface-2: #1D2530;
+    --color-text-1: #E8EBF0;
+    --color-text-2: #9AA5B3;
+    --color-text-3: #6B7686;
+    --color-text-disabled: #5F6979;
+    --color-border-subtle: #28303D;
+    --color-border-control: #667181;
+    --color-border-strong: #3A4554;
+    --color-tooltip-bg: #F4F6F8;
+    --color-tooltip-text: #171B22;
+
+    --color-positive-text: #0DC3A4;
+    --color-positive-subtle: #10302A;
+    --color-negative: #F2555A;
+    --color-negative-subtle: #351B20;
+    --color-error: #F2555A;
+    --color-error-subtle: #351B20;
+    --color-info: #7FA6F2;
+    --color-info-subtle: #1D2942;
+    --color-warning: #E3B25E;
+    --color-warning-subtle: #37291A;
+    --color-fng: #A79CF0;
+
+    --color-action-bg: #0DC3A4;
+    --color-action-text: #06302A;
+    --color-action-bg-hover: #2BD0B2;
+    --color-link: #2BD0B2;
+    --color-focus: #2BD0B2;
+
+    --color-chart-grid: #242D3A;
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.40);
+    --shadow-2: 0 8px 24px rgb(0 0 0 / 0.50);
+
+    color-scheme: dark;
+  }
+}
