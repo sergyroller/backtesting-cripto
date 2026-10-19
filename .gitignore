@@ -21,8 +21,11 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Datos: regenerables con scripts/sync_data.py (ver docs/planificacion.md)
-data/
+# Datos: la BD SQLite local es regenerable con scripts/sync_data.py, pero los
+# ficheros crudos de data/raw/ (con MANIFEST.json) sí se versionan para que
+# los tests de regresión funcionen 100 % offline tras clonar el repositorio.
+data/*.sqlite3
+data/*.sqlite3-*
 
 # Variables de entorno
 .env

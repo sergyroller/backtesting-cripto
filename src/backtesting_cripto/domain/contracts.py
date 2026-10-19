@@ -8,18 +8,21 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from backtesting_cripto.domain.models import Fill, OrderIntent, PriceBar
 
 
 @dataclass(frozen=True)
 class StrategyContext:
-    """Everything a strategy needs to decide on a given day."""
+    """Context passed to a strategy to generate order intents over a date window."""
 
-    day: date
-    prices: "PriceSeries"
+    asset: str
+    start_date: date
+    end_date: date
+    params: Mapping[str, Any]
     indicators: Mapping[str, "IndicatorSeries"]
+    prices: "PriceSeries | None" = None
 
 
 class PriceSeries(Protocol):

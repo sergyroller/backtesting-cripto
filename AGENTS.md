@@ -14,7 +14,6 @@ Sistema modular de backtesting de acumulación de criptomonedas (v1: BTC/EUR con
   - El inicio disponible depende de los datos requeridos por cada estrategia (`2018-02-01` para Fear & Greed; estrategias futuras podrán empezar antes).
   - Compras **100 % directas** (sin comisiones ni deslizamiento, ni duplicidad bruto/neto) y **sin benchmark DCA acoplado** (cada estrategia es independiente).
   - Dinero y cantidades: `decimal.Decimal` (BTC cuantificado a **8 decimales** con `ROUND_DOWN`; EUR y porcentajes a **2 decimales** con `ROUND_HALF_UP`), nunca `float`.
-- **Apuntes activos del arquitecto (post-F0):**
-  - **Fase actual:** **F1 — Modelos de dominio y contratos** (sigue el checklist detallado en `docs/notas-arquitectura.md`).
-  - Añade `src/backtesting_cripto/web/__init__.py` para que los 11 subpaquetes tengan su `__init__.py`.
-  - En **F2**, ajusta `.gitignore` para ignorar `data/*.sqlite3` pero permitir versionar `data/raw/` (o el snapshot en `tests/data/`) de forma que los tests de regresión (`2018-02-01` → `2026-10-18`: 121 compras / 13 300,00 €) funcionen 100 % offline tras clonar el repositorio.
+- **Apuntes activos del arquitecto (post-F1):**
+  - **Antes de empezar F2 (Punto 0 de `docs/notas-arquitectura.md`):** corrige `StrategyContext` en `src/backtesting_cripto/domain/contracts.py` para que incluya `asset`, `start_date`, `end_date`, `params`, `indicators` y `prices: PriceSeries | None = None` (tal como exigen las Secciones E.2 y E.4 de `docs/planificacion.md`), y limita la validación `[0, 100]` de `IndicatorValue` a `self.indicator == "fear_greed"`.
+  - **Fase actual:** **F2 — Ingesta, validación y almacenamiento de datos** (sigue el checklist completo de F2 en `docs/notas-arquitectura.md`, incluyendo ajustar `.gitignore` para ignorar solo `data/*.sqlite3*` y versionar `data/raw/`).

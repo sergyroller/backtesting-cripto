@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from backtesting_cripto.domain.contracts import StrategyContext
 from backtesting_cripto.domain.models import (
     BacktestConfig,
     BacktestResult,
@@ -355,6 +356,32 @@ def test_canonical_hash_returns_hex_sha256_digest() -> None:
     digest = canonical_hash({"x": 1})
     assert len(digest) == 64
     assert all(char in "0123456789abcdef" for char in digest)
+
+
+# --- StrategyContext ---------------------------------------------------------
+
+
+def test_strategy_context_holds_simulation_window() -> None:
+    ctx = StrategyContext(
+        asset="BTC",
+        start_date=date(2018, 2, 1),
+        end_date=date(2026, 10, 18),
+        params={"daily_below_threshold": 10},
+        indicators={},
+    )
+    assert ctx.asset == "BTC"
+    assert ctx.start_date == date(2018, 2, 1)
+    assert ctx.end_date == date(2026, 10, 18)
+    assert ctx.params == {"daily_below_threshold": 10}
+    assert ctx.indicators == {}
+    assert ctx.prices is None
+
+
+def test_indicator_value_accepts_fractional_for_non_fear_greed() -> None:
+    reading = IndicatorValue(
+        indicator="mvrv", day=date(2024, 1, 1), value=Decimal("2.5"), source="synthetic"
+    )
+    assert reading.value == Decimal("2.5")
 
 
 # --- Architectural test ------------------------------------------------------

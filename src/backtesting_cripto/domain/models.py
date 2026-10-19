@@ -65,10 +65,11 @@ class IndicatorValue(BaseModel):
 
     @model_validator(mode="after")
     def check_value(self) -> "IndicatorValue":
-        if not Decimal("0") <= self.value <= Decimal("100"):
-            raise ValueError("value must be in [0, 100]")
-        if self.value != self.value.to_integral_value():
-            raise ValueError("value must be an integer")
+        if self.indicator == "fear_greed":
+            if not Decimal("0") <= self.value <= Decimal("100"):
+                raise ValueError("fear_greed value must be in [0, 100]")
+            if self.value != self.value.to_integral_value():
+                raise ValueError("fear_greed value must be an integer")
         return self
 
 
