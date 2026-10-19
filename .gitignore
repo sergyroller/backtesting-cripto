@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Entornos virtuales
+.venv/
+venv/
+
+# uv
+.uv/
+
+# Calidad de código y tests
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Datos: regenerables con scripts/sync_data.py (ver docs/planificacion.md)
+data/
+
+# Variables de entorno
+.env
+.env.*
+
+# Editores
+.idea/
+.vscode/
+*.swp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
