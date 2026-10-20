@@ -6,7 +6,7 @@
     <p class="t-caption"><a class="c-link" href="/backtests">← Volver al historial</a></p>
     <h1>Detalle de la simulación</h1>
     <p class="t-caption">
-      Ejecutada el {{ result.created_at.strftime("%d") }} {{ result.created_at.strftime("%b") }} {{ result.created_at.strftime("%Y") }}
+      Ejecutada el {{ result.created_at | date_es }}
       · periodo {{ result.config.start_date | date_es }} – {{ result.config.end_date | date_es }}
       · <span class="t-mono">{{ result.run_id }}</span>
     </p>

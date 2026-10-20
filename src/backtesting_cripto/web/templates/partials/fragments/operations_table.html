@@ -55,10 +55,10 @@
 
 <div class="c-filterbar" role="group" aria-label="Filtrar por regla">
   <button type="button" class="c-chip" aria-pressed="{{ "true" if reason == "all" else "false" }}"
-          hx-get="/ui/operations?reason=all" hx-target="#operations-panel" hx-swap="innerHTML">Todas</button>
+          hx-get="/ui/operations?run_id={{ run_id }}&reason=all" hx-target="#operations-panel" hx-swap="innerHTML">Todas</button>
   {% for option in reasons %}
     <button type="button" class="c-chip" aria-pressed="{{ "true" if reason == option else "false" }}"
-            hx-get="/ui/operations?reason={{ option }}" hx-target="#operations-panel" hx-swap="innerHTML">
+            hx-get="/ui/operations?run_id={{ run_id }}&reason={{ option }}" hx-target="#operations-panel" hx-swap="innerHTML">
       {{ option | reason_es }}
     </button>
   {% endfor %}
@@ -67,14 +67,14 @@
 <div class="l-header__actions" style="justify-content: space-between;">
   {% if page > 1 %}
     <button type="button" class="c-button c-button--secondary"
-            hx-get="/ui/operations?page={{ page - 1 }}&reason={{ reason }}" hx-target="#operations-panel" hx-swap="innerHTML">
+            hx-get="/ui/operations?run_id={{ run_id }}&page={{ page - 1 }}&reason={{ reason }}" hx-target="#operations-panel" hx-swap="innerHTML">
       Anterior
     </button>
   {% else %}<span></span>{% endif %}
   <span class="t-caption">Página {{ page }} de {{ total_pages }}</span>
   {% if page < total_pages %}
     <button type="button" class="c-button c-button--secondary"
-            hx-get="/ui/operations?page={{ page + 1 }}&reason={{ reason }}" hx-target="#operations-panel" hx-swap="innerHTML">
+            hx-get="/ui/operations?run_id={{ run_id }}&page={{ page + 1 }}&reason={{ reason }}" hx-target="#operations-panel" hx-swap="innerHTML">
       Siguiente
     </button>
   {% else %}<span></span>{% endif %}

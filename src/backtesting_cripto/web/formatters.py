@@ -7,7 +7,7 @@ short Spanish dates.
 """
 
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from backtesting_cripto.domain.models import quantize_btc, quantize_eur
@@ -120,8 +120,8 @@ def format_btc(value: Decimal | None) -> str:
     return f"{format_decimal_es(quantized, 8)} BTC"
 
 
-def format_date_es(value: date | None) -> str:
-    """``date(2026, 10, 18)`` -> ``18 oct 2026``."""
+def format_date_es(value: date | datetime | None) -> str:
+    """``date(2026, 10, 18)`` -> ``18 oct 2026`` (datetime works too)."""
     if value is None:
         return MISSING
     return f"{value.day} {MONTHS_ES_ABBR[value.month - 1]} {value.year}"

@@ -211,6 +211,34 @@ def test_charts_use_spanish_date_ticks(client: TestClient) -> None:
     assert "18 oct 2026" in html  # nombres de mes en español desde el servidor
 
 
+def test_initial_load_paginates_operations(client: TestClient) -> None:
+    """La primera carga muestra 50 filas, no las 121 completas."""
+    post_simulation(client)
+    html = client.get("/").text
+    assert html.count("data-row-toggle") == 50
+    assert "Página 1 de 3" in html
+    assert "121 operaciones" in html
+
+
+def test_operations_endpoint_keeps_the_requested_run(client: TestClient) -> None:
+    """Filtrar o paginar no debe mezclar operaciones de otra simulación."""
+    import re
+
+    post_simulation(client)  # 121 operaciones
+    post_simulation(client, start_date="2020-01-01", end_date="2020-12-31")
+
+    listing = client.get("/backtests").text
+    run_ids = re.findall(r'href="/backtests/([a-f0-9]+)"', listing)
+    assert len(run_ids) == 2
+    run_full, run_short = run_ids[1], run_ids[0]  # el listado es DESC
+
+    page_two = client.get(f"/ui/operations?run_id={run_full}&page=2")
+    assert page_two.status_code == 200
+    assert "Página 2 de 3" in page_two.text
+    assert f"run_id={run_full}" in page_two.text  # los enlaces HTMX lo mantienen
+    assert f"run_id={run_short}" not in page_two.text
+
+
 def test_charts_show_empty_state_without_operations(client: TestClient) -> None:
     params = json.dumps(
         {"daily_below_threshold": 0, "daily_amount_eur": "50,00", "weekly_bands": []}

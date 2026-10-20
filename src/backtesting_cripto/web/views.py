@@ -225,8 +225,9 @@ def create_web_router(
         }
 
     def result_context(result: Any) -> dict[str, Any]:
-        """Template context of a finished simulation."""
+        """Template context of a finished simulation (page 1 of 50 rows)."""
         rows = build_operation_rows(result.fills)
+        page_rows, total_pages, safe_page = paginate_rows(rows, 1)
         reasons = sorted(result.metrics.operations_by_reason)
         return {
             "result": result,
@@ -244,12 +245,13 @@ def create_web_router(
             },
             "charts": build_chart_specs(result, fng_series()),
             "alt": build_alt_tables(result),
-            "rows": rows,
+            "rows": page_rows,
             "reasons": reasons,
             "reason": "all",
-            "page": 1,
+            "page": safe_page,
             "total": len(rows),
-            "total_pages": max(1, (len(rows) + 49) // 50),
+            "total_pages": total_pages,
+            "run_id": result.run_id,
             "incidents": result.incidents,
         }
 
@@ -479,6 +481,7 @@ def create_web_router(
             "page": safe_page,
             "total_pages": total_pages,
             "total": len(rows),
+            "run_id": result.run_id,
         }
         return HTMLResponse(
             jinja.get_template("partials/fragments/operations_table.html").render(context)

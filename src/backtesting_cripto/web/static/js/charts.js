@@ -112,6 +112,21 @@ function registerChart(divId) {
   if (!window.__btCharts.includes(divId)) window.__btCharts.push(divId);
 }
 
+/* Fusión profunda del layout base con el layout específico de cada gráfico.
+ * Object.assign superficial perdería xaxis/yaxis (gridcolor, ticks, rangos y
+ * ticktext en español) al sobreescribir el objeto entero (§12.7). */
+function mergeLayout(base, override) {
+  var over = override || {};
+  var merged = Object.assign({}, base, over);
+  merged.xaxis = Object.assign({}, base.xaxis || {}, over.xaxis || {});
+  merged.yaxis = Object.assign({}, base.yaxis || {}, over.yaxis || {});
+  merged.margin = Object.assign({}, base.margin || {}, over.margin || {});
+  merged.font = Object.assign({}, base.font || {}, over.font || {});
+  merged.legend = Object.assign({}, base.legend || {}, over.legend || {});
+  merged.hoverlabel = Object.assign({}, base.hoverlabel || {}, over.hoverlabel || {});
+  return merged;
+}
+
 /* Inicializa todos los div[data-chart] presentes en `root` leyendo su
  * <script type="application/json" data-chart-for="<id>"> asociado. */
 function initChartsIn(root) {
@@ -126,10 +141,12 @@ function initChartsIn(root) {
     if (dataScript && !el.dataset.chartInitialized) {
       var spec = JSON.parse(dataScript.textContent || "{}");
       var traces = applyTraceColors(spec.traces || []);
-      var layout = Object.assign({}, baseLayout(isMobile), spec.layout || {});
+      var layout = mergeLayout(baseLayout(isMobile), spec.layout || {});
       var config = Object.assign({}, baseConfig(isMobile), spec.config || {});
       Plotly.newPlot(el, traces, layout, config);
       el.dataset.chartInitialized = "true";
+      // Se guarda el layout propio para que el cambio de tema no lo borre.
+      el.__btSpecLayout = spec.layout || {};
       registerChart(el.id);
     } else if (el.dataset.chartInitialized) {
       Plotly.Plots.resize(el);
@@ -145,7 +162,9 @@ document.addEventListener("bt:theme-changed", function () {
   window.__btCharts.forEach(function (id) {
     var el = document.getElementById(id);
     if (!el || !el.data) return;
-    Plotly.relayout(el, baseLayout(isMobile));
+    // Se fusiona con el layout propio del gráfico para no perder títulos,
+    // rangos ni los ticktext en español generados por el servidor.
+    Plotly.relayout(el, mergeLayout(baseLayout(isMobile), el.__btSpecLayout));
     el.data.forEach(function (trace, idx) {
       var role = trace.meta && trace.meta.role;
       var color = role && palette[role] ? palette[role] : null;

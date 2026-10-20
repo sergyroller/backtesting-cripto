@@ -1,10 +1,22 @@
 /* ==========================================================================
  * app.js — helpers de UI: tramos semanales, atajos de rango, pestañas,
  * acordeón de filas en móvil y toasts. Sin framework.
+ *
+ * Todos los inicializadores son idempotentes (marcan cada elemento con
+ * dataset.bound) y se acotan al `root` indicado, de modo que los swaps
+ * HTMX pueden disparar htmx:load repetidamente sin duplicar listeners.
  * ========================================================================== */
 
 (function () {
   "use strict";
+
+  function markBound(element) {
+    if (element.dataset.bound) {
+      return false;
+    }
+    element.dataset.bound = "true";
+    return true;
+  }
 
   /* --- Parámetros de la simulación: JSON oculto sincronizado --- */
   function syncParams(form) {
@@ -52,6 +64,9 @@
   }
 
   function initBands(form) {
+    if (!markBound(form)) {
+      return;
+    }
     var template = document.getElementById("band-row-template");
     var list = form.querySelector("[data-band-list]");
     if (!template || !list) {
@@ -80,6 +95,9 @@
 
   /* --- Atajos de rango 1A / 3A / 5A / Todo --- */
   function initRangeShortcuts(form) {
+    if (!markBound(form)) {
+      return;
+    }
     var endInput = form.querySelector("[data-range-end]");
     var startInput = form.querySelector("[data-range-start]");
     if (!endInput || !startInput) {
@@ -92,7 +110,9 @@
         if (isNaN(end.getTime())) {
           return;
         }
-        var start = new Date(Date.UTC(end.getUTCFullYear() - years, end.getUTCMonth(), end.getUTCDate()));
+        var start = new Date(
+          Date.UTC(end.getUTCFullYear() - years, end.getUTCMonth(), end.getUTCDate())
+        );
         var min = startInput.getAttribute("min");
         if (min && start.toISOString().slice(0, 10) < min) {
           start = new Date(min + "T00:00:00Z");
@@ -104,8 +124,12 @@
   }
 
   /* --- Pestañas Resumen / Operaciones / Supuestos --- */
-  function initTabs() {
-    document.querySelectorAll("[data-tabs]").forEach(function (group) {
+  function initTabs(root) {
+    var scope = root || document;
+    scope.querySelectorAll("[data-tabs]").forEach(function (group) {
+      if (!markBound(group)) {
+        return;
+      }
       var tabs = group.querySelectorAll("[data-tab]");
       var panels = group.querySelectorAll("[data-tab-panel]");
       tabs.forEach(function (tab) {
@@ -131,8 +155,12 @@
   }
 
   /* --- Acordeón de filas en móvil (tabla de operaciones) --- */
-  function initRowDetails() {
-    document.querySelectorAll("[data-row-toggle]").forEach(function (button) {
+  function initRowDetails(root) {
+    var scope = root || document;
+    scope.querySelectorAll("[data-row-toggle]").forEach(function (button) {
+      if (!markBound(button)) {
+        return;
+      }
       button.addEventListener("click", function () {
         var target = document.getElementById(button.getAttribute("aria-controls") || "");
         if (!target) {
@@ -146,8 +174,12 @@
   }
 
   /* --- Toasts: auto-dismiss a los 6 s, pausa al enfocar --- */
-  function initToasts() {
-    document.querySelectorAll("[data-toast]").forEach(function (toast) {
+  function initToasts(root) {
+    var scope = root || document;
+    scope.querySelectorAll("[data-toast]").forEach(function (toast) {
+      if (!markBound(toast)) {
+        return;
+      }
       var timer = setTimeout(function () {
         toast.remove();
       }, 6000);
@@ -157,6 +189,14 @@
       toast.addEventListener("focusin", function () {
         clearTimeout(timer);
       });
+    });
+  }
+
+  function initForms(root) {
+    var scope = root || document;
+    scope.querySelectorAll("form[data-simulation-form]").forEach(function (form) {
+      initBands(form);
+      initRangeShortcuts(form);
     });
   }
 
@@ -177,23 +217,17 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll("form[data-simulation-form]").forEach(function (form) {
-      initBands(form);
-      initRangeShortcuts(form);
-    });
-    initTabs();
-    initRowDetails();
-    initToasts();
+    initForms(document);
+    initTabs(document);
+    initRowDetails(document);
+    initToasts(document);
   });
 
   document.body.addEventListener("htmx:load", function (evt) {
     var root = evt.detail && evt.detail.elt ? evt.detail.elt : document;
-    root.querySelectorAll("form[data-simulation-form]").forEach(function (form) {
-      initBands(form);
-      initRangeShortcuts(form);
-    });
-    initTabs();
-    initRowDetails();
-    initToasts();
+    initForms(root);
+    initTabs(root);
+    initRowDetails(root);
+    initToasts(root);
   });
 })();
