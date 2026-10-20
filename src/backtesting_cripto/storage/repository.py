@@ -7,6 +7,7 @@ loaded fully into memory so backtest lookups are O(1).
 import sqlite3
 from bisect import bisect_right
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -108,13 +109,28 @@ class MemoryIndicatorSeries:
         return self._days[0], self._days[-1]
 
 
+@dataclass(frozen=True)
+class DatasetRecord:
+    """A dataset row as stored in SQLite."""
+
+    id: str
+    source: str
+    url: str
+    retrieved_at: str
+    sha256: str
+    first_day: date
+    last_day: date
+    record_count: int
+    license: str
+
+
 class BacktestRepository:
     """SQLite repository for datasets, price bars and indicator values."""
 
     def __init__(self, db_path: Path | str) -> None:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection = sqlite3.connect(str(self._db_path))
+        self._connection = sqlite3.connect(str(self._db_path), check_same_thread=False)
         create_schema(self._connection)
 
     @property
@@ -129,6 +145,35 @@ class BacktestRepository:
 
     def __exit__(self, *_exc_info: object) -> None:
         self.close()
+
+    def has_datasets(self) -> bool:
+        """True when at least one dataset row exists."""
+        row = self._connection.execute("SELECT 1 FROM datasets LIMIT 1").fetchone()
+        return row is not None
+
+    def list_datasets(self) -> list[DatasetRecord]:
+        """All stored datasets, ordered by id."""
+        rows = self._connection.execute(
+            """
+            SELECT id, source, url, retrieved_at, sha256, first_day, last_day,
+                   record_count, license
+            FROM datasets ORDER BY id
+            """
+        ).fetchall()
+        return [
+            DatasetRecord(
+                id=row[0],
+                source=row[1],
+                url=row[2],
+                retrieved_at=row[3],
+                sha256=row[4],
+                first_day=date.fromisoformat(row[5]),
+                last_day=date.fromisoformat(row[6]),
+                record_count=row[7],
+                license=row[8],
+            )
+            for row in rows
+        ]
 
     def upsert_dataset(
         self,
