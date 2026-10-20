@@ -15,6 +15,6 @@ Sistema modular de backtesting de acumulación de criptomonedas (v1: BTC/EUR con
   - El inicio disponible depende de los datos requeridos por cada estrategia (`2018-02-01` para Fear & Greed; estrategias futuras podrán empezar antes).
   - Compras **100 % directas** (sin comisiones ni deslizamiento, ni duplicidad bruto/neto) y **sin benchmark DCA acoplado** (cada estrategia es independiente).
   - Dinero y cantidades: `decimal.Decimal` (BTC cuantificado a **8 decimales** con `ROUND_DOWN`; EUR y porcentajes a **2 decimales** con `ROUND_HALF_UP`), nunca `float`.
-- **Apuntes activos del arquitecto (post-F3):**
-  - **Fases F0, F1, F2 y F3:** ✅ Aprobadas (104 tests en verde).
-  - **Fase actual:** **F4 — Estrategia Fear & Greed, registros y test de regresión** (`strategies/base.py`, `strategies/fear_greed.py`, `indicators/registry.py`, `tests/unit/test_fear_greed_strategy.py` y `tests/integration/test_fear_greed_regression.py`). Sigue el checklist completo de F4 en `docs/notas-arquitectura.md`.
+- **Apuntes activos del arquitecto (post-F4):**
+  - **Fases F0, F1, F2, F3 y F4:** ✅ Aprobadas (131 tests en verde, incluido el test de regresión real sobre `[2018-02-01, 2026-10-18]`).
+  - **Fase actual:** **F5 — Persistencia de ejecuciones, servicios y API REST** (`storage/run_store.py`, `services/data_service.py`, `services/backtest_service.py`, `api/app.py`, `api/routes.py`, `tests/unit/test_run_store.py` y `tests/integration/test_api_and_services.py`). Sigue el checklist completo de F5 en `docs/notas-arquitectura.md`.

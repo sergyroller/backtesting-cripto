@@ -11,91 +11,97 @@ Este documento recoge las revisiones del arquitecto tras cada fase y los **apunt
 | **F0 — Esqueleto y herramientas** | ✅ Aprobada | `pyproject.toml` (uv + setuptools), 11 paquetes en `src/backtesting_cripto/`, `ruff`, `mypy --strict` y `pytest` en verde. |
 | **F1 — Modelos de dominio y contratos** | ✅ Aprobada | Modelos Pydantic v2, `quantize_btc`/`quantize_eur`, `canonical_hash` y `StrategyContext` verificados. |
 | **F2 — Ingesta y almacenamiento** | ✅ Aprobada | `raw_store` con SHA-256, proveedores (`bgeometrics`, `alternative.me`, `bitstamp`), `dataset_checks`, `repository` SQLite y `data/raw/` congelado en git. |
-| **F3 — Motor, cartera y métricas** | ✅ Aprobada | `calendar`, `execution`, `portfolio`, `runner`, `calculator` y `consistency_checks` verificados con 104 tests (incluyendo `hypothesis`). |
-| **F4 — Estrategia Fear & Greed** | ⏳ Pendiente (siguiente) | Ver checklist obligatorio de F4 abajo (incluye test de regresión sobre `[2018-02-01, 2026-10-18]`). |
-| **F5 — Persistencia de runs y API REST** | ⏳ Pendiente | — |
+| **F3 — Motor, cartera y métricas** | ✅ Aprobada | `calendar`, `execution`, `portfolio`, `runner`, `calculator` y `consistency_checks` verificados. |
+| **F4 — Estrategia Fear & Greed** | ✅ Aprobada | `StrategyRegistry`, `FearGreedStrategy`, `indicators/registry.py` y test de regresión offline `[2018-02-01, 2026-10-18]` en verde (`131 passed`). |
+| **F5 — Persistencia de runs y API REST** | ⏳ Pendiente (siguiente) | Ver checklist obligatorio de F5 abajo. |
 | **F6 — Interfaz web** | ⏳ Pendiente | Seguir `docs/design/DESIGN_SYSTEM.md`, `docs/design/tokens.css` y `docs/design/plotly-theme.js` (ya validados: 3 vistas `/`, `/backtests`, `/data`). |
 | **F7 — Documentación final y pulido** | ⏳ Pendiente | — |
 
 ---
 
-## Apuntes obligatorios tras la revisión de F3
+## Apuntes obligatorios tras la revisión de F4
 
-### 1. Checklist obligatorio para la Fase F4 (Estrategia Fear & Greed, registros y test de regresión)
+### 1. Checklist obligatorio para la Fase F5 (Persistencia de ejecuciones, servicios y API REST)
 
-Implementar exactamente según las **Secciones B.3, E.4, G.1 y G.2** de `docs/planificacion.md`:
+Implementar exactamente según las **Secciones D.3, E.1, F.2 y H (F5)** de `docs/planificacion.md`:
 
-1. **`src/backtesting_cripto/strategies/base.py`**:
-   - Definir `StrategyRegistry` (y una instancia por defecto o funciones de módulo `register_strategy`, `get_strategy`, `list_strategies`) que permita:
-     - Registrar estrategias que cumplan el protocolo `Strategy` de `domain.contracts`, junto con su `params_schema: type[BaseModel]` (por ejemplo mediante un atributo `params_schema` en la estrategia o un descriptor `StrategyMetadata(strategy_id, name, description, required_indicators, params_schema)`).
-     - Obtener una estrategia por `strategy_id` (lanzando `ConfigurationError` si no existe).
-     - Listar las estrategias registradas y validar sus parámetros con `params_schema.model_validate(raw_params)`.
+1. **Dependencias en `pyproject.toml` (`uv lock` / `uv sync`)**:
+   - Añadir a `dependencies`: `"fastapi>=0.115"`, `"uvicorn>=0.30"`.
+   - Añadir a `dependency-groups.dev`: `"httpx>=0.27"` (requerido por `fastapi.testclient.TestClient`).
 
-2. **`src/backtesting_cripto/strategies/fear_greed.py`**:
-   - Implementar `FearGreedStrategy` siguiendo exactamente la **Sección E.4** de `docs/planificacion.md`:
-     - `strategy_id = "fear_greed"`
-     - `name = "Acumulación por Crypto Fear & Greed Index"`
-     - `required_indicators = ("fear_greed",)`
-     - `params_schema = FearGreedParams`
-     - En `generate_intents(self, ctx: StrategyContext) -> Iterator[OrderIntent]`:
-       - Validar `params = FearGreedParams.model_validate(ctx.params)` (si `ValidationError`, relanzar como `ConfigurationError` o dejar que fluya de forma coherente; documentarlo y cubrirlo con test).
-       - Obtener `fng = ctx.indicators.get("fear_greed")` (si es `None`, lanzar `InsufficientDataError`).
-       - Recorrer cada día con `iter_days(ctx.start_date, ctx.end_date)`:
-         - `val = fng.value_on(day)`
-         - Si `val is None`: no emitir orden (`continue`, política explícita para los 39 días sin dato).
-         - **Regla 1 (diaria, prevalece siempre incluso en lunes):** si `val < params.daily_below_threshold`, emitir:
-           ```python
-           OrderIntent(
-               decision_day=day,
-               asset=ctx.asset,
-               amount_eur=params.daily_amount_eur,
-               reason=f"daily_<{params.daily_below_threshold}",
-               index_value=val,
-           )
-           ```
-           y hacer `continue` (nunca evaluar además los tramos semanales ese lunes).
-         - **Regla 2 (semanal, solo lunes `is_monday(day)`):** recorrer `params.weekly_bands` (ordenados por `min_value`) y, si `band.min_value <= val <= band.max_value`, emitir:
-           ```python
-           OrderIntent(
-               decision_day=day,
-               asset=ctx.asset,
-               amount_eur=band.amount_eur,
-               reason=f"monday_{band.min_value}_{band.max_value}",
-               index_value=val,
-           )
-           ```
-           y hacer `break`.
-         - **Regla 3:** si no entra en ningún tramo (p. ej. `val >= 25`), no emitir orden.
-   - Registrar `FearGreedStrategy` por defecto en el registro de estrategias.
+2. **`src/backtesting_cripto/storage/run_store.py`** (esquema SQLite exacto de la **Sección D.3**):
+   - Crear las tablas `backtest_runs` y `trades` si no existen:
+     ```sql
+     CREATE TABLE IF NOT EXISTS backtest_runs (
+         run_id TEXT PRIMARY KEY,
+         created_at TEXT NOT NULL,
+         code_version TEXT NOT NULL,
+         dataset_hash TEXT NOT NULL,
+         config_json TEXT NOT NULL,
+         config_hash TEXT NOT NULL,
+         metrics_json TEXT NOT NULL,
+         incidents_json TEXT NOT NULL,
+         result_hash TEXT NOT NULL
+     );
 
-3. **`src/backtesting_cripto/indicators/registry.py`**:
-   - Implementar un cargador/registro limpio (`IndicatorRegistry` o helper `load_required_indicators(repo: BacktestRepository, required_indicators: Sequence[str]) -> dict[str, IndicatorSeries]`) para que el motor y el futuro `backtest_service` (F5) obtengan las series requeridas por cualquier estrategia sin acoplarse a nombres fijos.
+     CREATE TABLE IF NOT EXISTS trades (
+         run_id TEXT NOT NULL,
+         seq INTEGER NOT NULL,
+         decision_day TEXT NOT NULL,
+         execution_day TEXT NOT NULL,
+         index_value TEXT,
+         amount_eur TEXT NOT NULL,
+         price_eur TEXT NOT NULL,
+         btc_quantity TEXT NOT NULL,
+         reason TEXT NOT NULL,
+         PRIMARY KEY (run_id, seq)
+     );
+     ```
+   - Clase `RunStore(db_path: Path | str)` (o integrada con la misma base de datos SQLite que `BacktestRepository`):
+     - `save_run(result: BacktestResult) -> None`: guarda en una transacción la fila de `backtest_runs` y todas las filas de `trades` (`seq` de `1` a `len(result.fills)`, `Decimal` como `TEXT`).
+     - `get_run(run_id: str, prices: PriceSeries | None = None) -> BacktestResult | None`:
+       - Reconstruye `BacktestConfig`, `Metrics`, ` list[Fill]` (leyendo de `trades` ordenado por `seq`) y, si se pasa `prices` (o cargándolo del repositorio), reconstruye `equity_curve` con `build_equity_curve(fills, prices, cfg.start_date, cfg.end_date)` para devolver el `BacktestResult` completo.
+     - `list_runs(limit: int = 100) -> list[RunSummary]` (ordenadas por `created_at DESC`): devuelve un modelo/dataclass `RunSummary` con `run_id`, `created_at`, `code_version`, `dataset_hash`, `config`, `config_hash`, `metrics`, `result_hash`.
 
-4. **Tests unitarios en `tests/unit/test_fear_greed_strategy.py`** (todos los casos de la **Sección G.1**):
-   - Bordes de los tramos por defecto en lunes para los valores `9`, `10`, `14`, `15`, `19`, `20`, `24`, `25`:
-     - `9` → `50,00 €` con `reason == "daily_<10"`
-     - `10` y `14` → `200,00 €` con `reason == "monday_10_14"`
-     - `15` y `19` → `150,00 €` con `reason == "monday_15_19"`
-     - `20` y `24` → `100,00 €` con `reason == "monday_20_24"`
-     - `25` → ninguna orden emitida.
-   - Prevalencia de la regla diaria en lunes: un lunes con índice `8` emite **una única compra de `50,00 €`** (`daily_<10`), nunca una semanal.
-   - Día entre martes y domingo con índice `12`: ninguna compra.
-   - Día entre martes y domingo con índice `7`: compra diaria de `50,00 €` (`daily_<10`).
-   - Lunes sin dato de índice (`None`, hueco): ninguna compra.
-   - Personalización de tramos e importes desde `FearGreedParams` (p. ej. cambiar `[20..24]` a `[20..30]` con `120,00 €` compra `120,00 €` un lunes con valor `28`).
-   - Registro y consulta en `StrategyRegistry` (y error `ConfigurationError` al pedir un `strategy_id` desconocido).
+3. **`src/backtesting_cripto/services/data_service.py`**:
+   - Clase/funciones de servicio que encapsulan la gestión de datos locales y la sincronización:
+     - **Auto-hidratación inicial desde `data/raw/` (`ensure_populated`):** si la base de datos SQLite (`data/backtesting.sqlite3`) aún no tiene los datasets cargados pero `data/raw/MANIFEST.json` sí existe en disco, consolida automáticamente los archivos crudos de `data/raw/` en SQLite **sin acceder a la red**. Así un clon fresco del repositorio tiene datos listos nada más arrancar.
+     - `get_data_status() -> DataStatus`: devuelve el estado de los datasets almacenados en SQLite (`datasets` con `id`, `source`, `first_day`, `last_day`, `record_count`, `retrieved_at`, `sha256`, `license`), el `dataset_hash` del `RawStore`, el `last_closed_utc_day` actual (`today_utc - 1`) y el rango disponible por estrategia (`available_start`, `available_end`).
+     - `sync_data(now: datetime | None = None) -> DataStatus`: ejecuta la sincronización contra los proveedores (reutilizando o centralizando la lógica de `scripts/sync_data.py` para no duplicar código entre el script CLI y el servicio), filtrando hasta `last_closed_utc_day(now)` y actualizando `RawStore` y `BacktestRepository`.
 
-5. **Test de integración y regresión sobre el dataset congelado en `tests/integration/test_fear_greed_regression.py`** (**Sección G.2**):
-   - Cargando las series reales desde `data/raw/` (100 % offline, reutilizando los helpers o `RawStore` para no depender de que exista `data/backtesting.sqlite3` en un clon limpio), ejecutar `run_backtest` con `FearGreedStrategy` y los parámetros por defecto en la ventana cerrada `start_date = date(2018, 2, 1)`, `end_date = date(2026, 10, 18)`, `execution_mode = "close_same_day"`.
-   - Verificar exactamente las invariantes de regresión del proyecto:
-     - `result.metrics.total_operations == 121`
-     - `result.metrics.operations_by_reason == {"daily_<10": 42, "monday_10_14": 23, "monday_15_19": 20, "monday_20_24": 36}`
-     - `result.metrics.total_invested_eur == Decimal("13300.00")`
-     - `result.metrics.btc_accumulated == Decimal("1.10037310")`
-     - `result.metrics.average_buy_price_eur == Decimal("12086.81")`
-     - `result.metrics.final_price_eur == Decimal("73067.27")`
-     - `result.metrics.final_portfolio_value_eur == Decimal("80401.26")`
-     - `result.metrics.pnl_eur == Decimal("67101.26")`
-     - `result.metrics.roi_pct == Decimal("504.52")`
-     - `result.incidents == []`
-   - Verificar también el modo `close_next_day` sobre la misma ventana y comprobar que dos ejecuciones producen idéntico `result_hash`.
+4. **`src/backtesting_cripto/services/backtest_service.py`**:
+   - Clase `BacktestService(repo: BacktestRepository, run_store: RunStore, raw_store: RawStore, registry: StrategyRegistry = default_registry)`:
+     - `execute_backtest(config: BacktestConfig) -> BacktestResult`:
+       1. Obtiene la estrategia del registro (`registry.get(config.strategy_id)`) y valida `config.strategy_params` con `registry.validate_params(...)` (si falla `ValidationError`, lanza `ConfigurationError`).
+       2. Carga `prices = repo.price_series(asset=config.asset, quote=config.quote)` e `indicators = load_required_indicators(repo, strategy.required_indicators)` (convirtiendo `LookupError` en `InsufficientDataError`).
+       3. Calcula `bounds = available_date_bounds(prices, indicators, strategy.required_indicators)` y valida la ventana solicitada con `validate_window(config.start_date, config.end_date, bounds)`.
+       4. Ejecuta `result = run_backtest(config, prices, indicators, strategy, dataset_hash=raw_store.dataset_hash())`.
+       5. Persiste el resultado con `run_store.save_run(result)` y lo devuelve.
+     - `get_backtest(run_id: str) -> BacktestResult | None`: recupera el `BacktestResult` completo reconstruyendo su `equity_curve` con los precios locales.
+     - `list_backtests(limit: int = 100) -> list[RunSummary]`: lista las ejecuciones guardadas.
+     - `list_available_strategies() -> list[dict[str, Any]]`: devuelve metadatos de cada estrategia registrada (`strategy_id`, `name`, `description`, `required_indicators`, `default_params`, `available_start`, `available_end`).
+
+5. **`src/backtesting_cripto/api/app.py` y `src/backtesting_cripto/api/routes.py`**:
+   - `create_app(db_path: Path | None = None, raw_dir: Path | None = None) -> FastAPI`: factoría limpia e inyectable para tests.
+   - Endpoints REST en `routes.py` (**Sección H, F5**):
+     - `GET /api/strategies`: lista estrategias registradas con sus parámetros por defecto y su rango de fechas disponible `[available_start, available_end]`.
+     - `GET /api/data/status`: devuelve el estado de los datasets locales, `dataset_hash`, `last_closed_utc_day` y rangos disponibles.
+     - `POST /api/data/sync`: lanza la sincronización de datos y devuelve el nuevo `DataStatus`.
+     - `POST /api/backtests`: recibe un payload de configuración (`BacktestConfig` o con `strategy_params` opcional usando los defaults de la estrategia), ejecuta el backtest, lo persiste en SQLite y devuelve el `BacktestResult` (código `201 Created` o `200 OK`).
+     - `GET /api/backtests`: devuelve la lista de resúmenes de ejecuciones guardadas (`list[RunSummary]`).
+     - `GET /api/backtests/{run_id}`: devuelve el `BacktestResult` completo (o `404` si no existe).
+   - Mapeo limpio de excepciones de dominio a códigos HTTP:
+     - `ConfigurationError` → `422 Unprocessable Entity` (o `400 Bad Request`) con detalle claro.
+     - `InsufficientDataError` / `DataValidationError` → `400` / `409` con detalle claro.
+
+6. **Tests en `tests/unit/test_run_store.py` y `tests/integration/test_api_and_services.py`**:
+   - Verificar `RunStore`: guardar y recuperar un `BacktestResult` conserva al 100 % los `Fill` (incluyendo `index_value` y precisión `Decimal`), las métricas, los hashes y la `equity_curve`.
+   - Verificar la auto-hidratación desde `data/raw/` hacia un SQLite temporal vacío en `tmp_path` (0 llamadas de red).
+   - Verificar todos los endpoints con `fastapi.testclient.TestClient`:
+     - `GET /api/strategies` devuelve `"fear_greed"` con `available_start == "2018-02-01"`.
+     - `GET /api/data/status` devuelve los datasets y `dataset_hash`.
+     - `POST /api/backtests` en `[2018-02-01, 2026-10-18]` devuelve `total_operations == 121`, `total_invested_eur == "13300.00"`, `btc_accumulated == "1.10037310"`, y persiste el run.
+     - `GET /api/backtests` incluye el `run_id` recién creado y `GET /api/backtests/{run_id}` devuelve el resultado completo con el mismo `result_hash`.
+     - `GET /api/backtests/nonexistent` devuelve `404`.
+     - `POST /api/backtests` con tramos solapados o fechas fuera del rango disponible devuelve error `400`/`422`.
+     - `POST /api/data/sync` (mockeando la descarga HTTP para no depender de internet en los tests) actualiza y devuelve el estado.
