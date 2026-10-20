@@ -1,5 +1,7 @@
 """FastAPI application factory (injectable storage for tests)."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -35,10 +37,17 @@ def create_app(db_path: Path | None = None, raw_dir: Path | None = None) -> Fast
     data_service.ensure_populated()
     backtest_service = BacktestService(repo, run_store, raw_store)
 
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        yield
+        run_store.close()
+        repo.close()
+
     app = FastAPI(
         title="backtesting-cripto",
         version=__version__,
         description=API_DESCRIPTION,
+        lifespan=lifespan,
     )
     app.state.db_path = resolved_db_path
     app.state.raw_dir = resolved_raw_dir

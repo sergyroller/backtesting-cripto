@@ -48,15 +48,23 @@ def load_frozen_fear_greed() -> list[IndicatorValue]:
 
 
 def load_frozen_price_bars() -> list[PriceBar]:
-    """Parse every frozen Bitstamp raw page (no network), deduplicated by day."""
+    """Parse every frozen Bitstamp raw page (no network), deduplicated by day.
+
+    Manifest entries are applied oldest-first so the most recent
+    download always wins when two files cover the same day.
+    """
     if not RAW_DIR.exists():
         pytest.fail(f"missing {RAW_DIR}: run 'uv run python scripts/sync_data.py' first")
     store = RawStore(RAW_DIR)
     bars_by_day: dict[date, PriceBar] = {}
-    for entry in sorted(store.load_manifest(), key=lambda item: item.relative_path):
+    manifest = sorted(
+        store.load_manifest(),
+        key=lambda item: (item.retrieved_at, item.relative_path),
+    )
+    for entry in manifest:
         if entry.source == bitstamp_ohlc.SOURCE:
             for bar in bitstamp_ohlc.parse_payload(store.read_payload(entry)):
-                bars_by_day.setdefault(bar.day, bar)
+                bars_by_day[bar.day] = bar
     if not bars_by_day:
         pytest.fail(f"no frozen bitstamp dataset in {RAW_DIR}")
     return [bars_by_day[day] for day in sorted(bars_by_day)]

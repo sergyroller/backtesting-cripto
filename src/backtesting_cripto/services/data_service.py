@@ -181,22 +181,30 @@ class DataService:
 
     # --- Offline hydration ----------------------------------------------------
 
-    def ensure_populated(self) -> bool:
+    def ensure_populated(self, now: datetime | None = None) -> bool:
         """Populate SQLite from data/raw/ when the database has no datasets.
 
         Returns True when the hydration actually ran. Never touches the
-        network, so a fresh clone is ready to run backtests.
+        network, so a fresh clone is ready to run backtests. ``now``
+        allows injecting the reference clock (tests).
         """
         if self._repo.has_datasets():
             return False
         if not self._raw_store.manifest_path.exists():
             return False
-        self._consolidate_from_raw()
+        self._consolidate_from_raw(now)
         return True
 
-    def _consolidate_from_raw(self) -> None:
-        """Parse the frozen raw files and load them into SQLite (no network)."""
-        closed_day = last_closed_utc_day()
+    def _consolidate_from_raw(self, now: datetime | None = None) -> None:
+        """Parse the frozen raw files and load them into SQLite (no network).
+
+        The raw payloads may contain the still-open day (e.g. today's
+        Fear & Greed reading), so both series are trimmed to the last
+        day where BOTH have data and which is not after the last closed
+        UTC day. This keeps the hydration correct whatever the clock
+        says, even on a clone whose frozen data is months old.
+        """
+        closed_day = last_closed_utc_day(now)
         fng_values = [
             value for value in self._load_raw_fear_greed() if value.day <= closed_day
         ]
@@ -206,8 +214,10 @@ class DataService:
             msg = "no usable data in the raw store for the current window"
             raise DataValidationError(msg)
 
-        # Validate up to the last day where both series have data.
-        available_last = min(fng_values[-1].day, bars[-1].day)
+        available_last = min(closed_day, fng_values[-1].day, bars[-1].day)
+        fng_values = [value for value in fng_values if value.day <= available_last]
+        bars = [bar for bar in bars if bar.day <= available_last]
+
         validate_fear_greed_series(fng_values, last_closed_day=available_last)
         validate_price_bars(bars, last_closed_day=available_last)
 
@@ -258,12 +268,16 @@ class DataService:
 
     def _load_raw_prices(self) -> list[PriceBar]:
         bars_by_day: dict[date, PriceBar] = {}
-        manifest = sorted(self._raw_store.load_manifest(), key=lambda item: item.relative_path)
+        manifest = sorted(
+            self._raw_store.load_manifest(),
+            key=lambda item: (item.retrieved_at, item.relative_path),
+        )
         for entry in manifest:
             if entry.source == bitstamp_ohlc.SOURCE:
                 for bar in bitstamp_ohlc.parse_payload(self._raw_store.read_payload(entry)):
                     if bar.day >= PRICES_FIRST_DAY:
-                        bars_by_day.setdefault(bar.day, bar)
+                        # Later downloads win: plain assignment, not setdefault.
+                        bars_by_day[bar.day] = bar
         if not bars_by_day:
             msg = "no frozen bitstamp dataset in the raw store"
             raise DataValidationError(msg)

@@ -44,11 +44,15 @@ def load_frozen_series() -> tuple[MemoryPriceSeries, MemoryIndicatorSeries]:
     values = [value for value in payload_values if value.day <= WINDOW_END]
 
     bars_by_day: dict[date, object] = {}
-    for manifest_entry in sorted(store.load_manifest(), key=lambda item: item.relative_path):
+    manifest = sorted(
+        store.load_manifest(),
+        key=lambda item: (item.retrieved_at, item.relative_path),
+    )
+    for manifest_entry in manifest:
         if manifest_entry.source == bitstamp_ohlc.SOURCE:
             for bar in bitstamp_ohlc.parse_payload(store.read_payload(manifest_entry)):
                 if bar.day <= WINDOW_END:
-                    bars_by_day.setdefault(bar.day, bar)
+                    bars_by_day[bar.day] = bar
     if not bars_by_day:
         pytest.fail(f"no frozen bitstamp dataset in {RAW_DIR}")
 

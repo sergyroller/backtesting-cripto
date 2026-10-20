@@ -67,6 +67,70 @@ def test_ensure_populated_makes_no_network_calls(
         assert indicators.date_bounds()[0] == FNG_FIRST_DAY
 
 
+def test_ensure_populated_works_when_clock_is_in_the_future(tmp_path: Path) -> None:
+    """The frozen F&G payload contains the still-open day (2026-10-20).
+
+    With a clock far in the future the hydration must still succeed,
+    trimming both series to the last day with data (2026-10-19) instead
+    of raising DataValidationError.
+    """
+    db_path = tmp_path / "future.sqlite3"
+    with BacktestRepository(db_path) as repo:
+        service = DataService(repo, RawStore(REAL_RAW_DIR))
+
+        assert service.ensure_populated(now=datetime(2027, 6, 1, tzinfo=UTC)) is True
+        assert repo.has_datasets() is True
+
+        prices = repo.price_series(asset="BTC", quote="EUR")
+        indicators = repo.indicator_series(indicator="fear_greed")
+        assert prices.date_bounds()[1] == date(2026, 10, 19)
+        assert indicators.date_bounds()[1] == date(2026, 10, 19)
+
+
+def test_app_closes_sqlite_connections_on_shutdown(tmp_path: Path) -> None:
+    import sqlite3
+
+    app = create_app(db_path=tmp_path / "lifecycle.sqlite3", raw_dir=REAL_RAW_DIR)
+    with TestClient(app) as client:
+        assert client.get("/api/data/status").status_code == 200
+        repo = app.state.repo
+        run_store = app.state.run_store
+
+    # The lifespan must close both connections when the app shuts down.
+    with pytest.raises(sqlite3.ProgrammingError):
+        repo.connection.execute("SELECT 1")
+    with pytest.raises(sqlite3.ProgrammingError):
+        run_store.connection.execute("SELECT 1")
+
+
+def test_get_backtest_reuses_the_service_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GET /api/backtests/{run_id} must not open extra SQLite connections."""
+    app = create_app(db_path=tmp_path / "reuse.sqlite3", raw_dir=REAL_RAW_DIR)
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/backtests",
+            json={"start_date": "2020-01-01", "end_date": "2020-12-31"},
+        )
+        assert created.status_code == 201
+        run_id = created.json()["run_id"]
+
+        opened: list[object] = []
+        original_init = BacktestRepository.__init__
+
+        def counting_init(self: BacktestRepository, db_path: object) -> None:
+            opened.append(db_path)
+            original_init(self, db_path)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(BacktestRepository, "__init__", counting_init)
+        fetched = client.get(f"/api/backtests/{run_id}")
+
+        assert fetched.status_code == 200
+        assert fetched.json()["result_hash"] == created.json()["result_hash"]
+        assert opened == []  # no new repository was opened for the request
+
+
 # --- GET /api/strategies ------------------------------------------------------
 
 

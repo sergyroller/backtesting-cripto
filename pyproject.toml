@@ -40,3 +40,9 @@ mypy_path = "src"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:DeprecationWarning",
+    # StarletteDeprecationWarning actually derives from UserWarning (verified
+    # in starlette 1.9), so the DeprecationWarning filter alone is not enough.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:UserWarning",
+]

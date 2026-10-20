@@ -139,6 +139,15 @@ class RunStore:
                 ],
             )
 
+    def get_config(self, run_id: str) -> BacktestConfig | None:
+        """Stored configuration of a run, or None when it does not exist."""
+        row = self._connection.execute(
+            "SELECT config_json FROM backtest_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return BacktestConfig.model_validate_json(row[0])
+
     def get_run(
         self, run_id: str, prices: PriceSeries | None = None
     ) -> BacktestResult | None:

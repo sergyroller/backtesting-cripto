@@ -62,8 +62,22 @@ class BacktestService:
         return result
 
     def get_backtest(self, run_id: str) -> BacktestResult | None:
-        """Rebuild a stored run, recomputing its equity curve from local prices."""
-        return self._run_store.get_run(run_id)
+        """Rebuild a stored run, recomputing its equity curve from local prices.
+
+        Prices are loaded through the service's own repository, so no
+        extra SQLite connection is opened per request.
+        """
+        config = self._run_store.get_config(run_id)
+        if config is None:
+            return None
+
+        try:
+            prices = self._repo.price_series(asset=config.asset, quote=config.quote)
+        except LookupError as error:
+            msg = f"no stored prices for {config.asset}/{config.quote}"
+            raise InsufficientDataError(msg) from error
+
+        return self._run_store.get_run(run_id, prices=prices)
 
     def list_backtests(self, limit: int = 100) -> list[RunSummary]:
         """Most recent stored runs."""
