@@ -15,6 +15,6 @@ Sistema modular de backtesting de acumulación de criptomonedas (v1: BTC/EUR con
   - El inicio disponible depende de los datos requeridos por cada estrategia (`2018-02-01` para Fear & Greed; estrategias futuras podrán empezar antes).
   - Compras **100 % directas** (sin comisiones ni deslizamiento, ni duplicidad bruto/neto) y **sin benchmark DCA acoplado** (cada estrategia es independiente).
   - Dinero y cantidades: `decimal.Decimal` (BTC cuantificado a **8 decimales** con `ROUND_DOWN`; EUR y porcentajes a **2 decimales** con `ROUND_HALF_UP`), nunca `float`.
-- **Apuntes activos del arquitecto (post-F2):**
-  - **Fases F0, F1 y F2:** ✅ Aprobadas (73 tests en verde).
-  - **Fase actual:** **F3 — Motor, cartera y métricas** (`engine/calendar.py`, `engine/execution.py`, `engine/portfolio.py`, `engine/runner.py`, `metrics/calculator.py`, `validation/consistency_checks.py` y `tests/unit/test_engine_and_metrics.py`). Sigue el checklist completo de F3 en `docs/notas-arquitectura.md`.
+- **Apuntes activos del arquitecto (post-F3):**
+  - **Fases F0, F1, F2 y F3:** ✅ Aprobadas (104 tests en verde).
+  - **Fase actual:** **F4 — Estrategia Fear & Greed, registros y test de regresión** (`strategies/base.py`, `strategies/fear_greed.py`, `indicators/registry.py`, `tests/unit/test_fear_greed_strategy.py` y `tests/integration/test_fear_greed_regression.py`). Sigue el checklist completo de F4 en `docs/notas-arquitectura.md`.
