@@ -15,6 +15,6 @@ Sistema modular de backtesting de acumulación de criptomonedas (v1: BTC/EUR con
   - El inicio disponible depende de los datos requeridos por cada estrategia (`2018-02-01` para Fear & Greed; estrategias futuras podrán empezar antes).
   - Compras **100 % directas** (sin comisiones ni deslizamiento, ni duplicidad bruto/neto) y **sin benchmark DCA acoplado** (cada estrategia es independiente).
   - Dinero y cantidades: `decimal.Decimal` (BTC cuantificado a **8 decimales** con `ROUND_DOWN`; EUR y porcentajes a **2 decimales** con `ROUND_HALF_UP`), nunca `float`.
-- **Apuntes activos del arquitecto (post-F5):**
-  - **Fases F0, F1, F2, F3, F4 y F5:** ✅ Aprobadas (154 tests en verde, 0 warnings).
-  - **Fase actual:** **F6 — Interfaz web (Jinja2 + HTMX + Plotly.js)** siguiendo `docs/design/DESIGN_SYSTEM.md`, `docs/design/tokens.css`, `docs/design/plotly-theme.js` y el checklist completo de F6 en `docs/notas-arquitectura.md`.
+- **Apuntes activos del arquitecto (revisión F6):**
+  - **Fases F0, F1, F2, F3, F4 y F5:** ✅ Aprobadas.
+  - **Fase actual:** **Saneamiento obligatorio de F6** (aplicar los **4 puntos** detallados en `docs/notas-arquitectura.md`: 1) paginar `rows` en `result_context` y propagar `run_id` en `/ui/operations` y `operations_table.html`, 2) hacer idempotentes y acotados a `root` los listeners de `app.js` ante `htmx:load`, 3) usar `mergeLayout` para fusionar `xaxis`/`yaxis` en `charts.js` y `docs/design/plotly-theme.js` tanto al iniciar como en `bt:theme-changed`, 4) usar `| date_es` en lugar de `strftime("%b")` en `pages/backtest_detail.html`).
