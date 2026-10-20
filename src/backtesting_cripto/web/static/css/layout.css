@@ -243,3 +243,20 @@
     margin-top: var(--space-8);
   }
 }
+
+/* Indicador de datos desactualizados en la navegación (§9.3): punto + texto
+   accesible, nunca solo color. */
+.c-nav__dot {
+  position: absolute;
+  top: 6px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-warning);
+  border-radius: var(--radius-full);
+}
+
+.l-bottomnav__item .c-nav__dot {
+  top: 8px;
+  right: calc(50% - 26px);
+}

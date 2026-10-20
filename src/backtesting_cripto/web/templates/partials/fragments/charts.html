@@ -1,3 +1,15 @@
+{% if metrics.total_operations == 0 %}
+  <div class="c-card">
+    <div class="c-empty">
+      {% include "partials/icons/chart-line.svg" %}
+      <p class="c-empty__title">Sin operaciones en este periodo</p>
+      <p class="c-empty__text">
+        La configuración actual no ha generado ninguna compra. El gráfico se omite
+        en lugar de mostrar una curva plana en cero.
+      </p>
+    </div>
+  </div>
+{% else %}
 <div class="l-section">
   <figure class="c-card c-chart" style="margin: 0;">
     <div class="c-chart__header">
@@ -109,4 +121,5 @@
     Simulación sin comisiones ni deslizamiento · ejecución al cierre UTC del día de la señal ·
     un día computa cuando su vela cierra en UTC.
   </p>
+{% endif %}
 </div>

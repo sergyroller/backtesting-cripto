@@ -102,6 +102,32 @@ def _spanish_errors(error: Exception) -> list[str]:
     return [f"Error inesperado: {error}"]
 
 
+def _normalize_params(params: dict[str, Any]) -> dict[str, Any]:
+    """Normalize Spanish decimal commas in incoming strategy parameters.
+
+    The UI works in Spanish format (``50,00``); Pydantic needs ``50.00``.
+    """
+    normalized = dict(params)
+
+    if "daily_amount_eur" in normalized:
+        normalized["daily_amount_eur"] = str(
+            _parse_decimal(str(normalized["daily_amount_eur"]))
+        )
+
+    bands = normalized.get("weekly_bands")
+    if isinstance(bands, list):
+        normalized["weekly_bands"] = [
+            {
+                **band,
+                "amount_eur": str(_parse_decimal(str(band["amount_eur"]))),
+            }
+            if isinstance(band, dict) and "amount_eur" in band
+            else band
+            for band in bands
+        ]
+    return normalized
+
+
 def create_web_router(
     *,
     data_service: DataService,
@@ -250,6 +276,33 @@ def create_web_router(
             return None
         return backtest_service.get_backtest(runs[0].run_id)
 
+    def default_config() -> BacktestConfig | None:
+        """Reference configuration: strategy defaults over the available window."""
+        start, end = available_window()
+        if start is None or end is None:
+            return None
+        return BacktestConfig(
+            asset="BTC",
+            quote="EUR",
+            strategy_id="fear_greed",
+            start_date=start,
+            end_date=end,
+            execution_mode="close_same_day",
+            strategy_params=backtest_service.default_params("fear_greed"),
+        )
+
+    def toast_html(tone: str, message: str) -> str:
+        return jinja.get_template("partials/fragments/toast.html").render(
+            tone=tone, message=message
+        )
+
+    def with_toast(fragment: str, tone: str, message: str) -> str:
+        """Append an out-of-band toast so HTMX can drop it into #toasts."""
+        return (
+            f"{fragment}"
+            f'<div id="toasts" hx-swap-oob="true">{toast_html(tone, message)}</div>'
+        )
+
     # --- GET / ----------------------------------------------------------------
 
     @router.get("/")
@@ -262,6 +315,16 @@ def create_web_router(
             if loaded is not None:
                 result = loaded
                 form = form_from_config(loaded.config)
+
+        if result is None and form["available_start"]:
+            # El panel nunca aparece vacío cuando hay datos: se ejecuta la
+            # simulación de referencia con los parámetros por defecto.
+            config = default_config()
+            if config is not None:
+                try:
+                    result = backtest_service.execute_backtest(config)
+                except DomainError:
+                    result = None
 
         context = base_context(request, "panel", form=form, errors=None)
         if result:
@@ -279,12 +342,22 @@ def create_web_router(
         config: BacktestConfig | None = None
 
         try:
-            raw_params = str(form.get("strategy_params_json") or "{}")
-            params: dict[str, Any] = json.loads(raw_params)
-            threshold = int(str(form.get("daily_below_threshold", "10")))
-            amount = _parse_decimal(str(form.get("daily_amount_eur", "0")))
-            params["daily_below_threshold"] = threshold
-            params["daily_amount_eur"] = str(amount)
+            raw_params = str(form.get("strategy_params_json") or "").strip()
+            if raw_params:
+                # El JSON oculto es la fuente de verdad (lo mantiene app.js
+                # sincronizado con todos los campos del formulario).
+                params = _normalize_params(json.loads(raw_params))
+            else:
+                # Sin JS: se reconstruye desde los campos escalares.
+                params = {
+                    "daily_below_threshold": int(
+                        str(form.get("daily_below_threshold", "10"))
+                    ),
+                    "daily_amount_eur": str(
+                        _parse_decimal(str(form.get("daily_amount_eur", "0")))
+                    ),
+                    "weekly_bands": [],
+                }
 
             config = BacktestConfig(
                 asset="BTC",
@@ -312,7 +385,9 @@ def create_web_router(
                 "partials/fragments/error_summary.html"
             ).render(errors=errors)
             if _is_htmx(request):
-                return HTMLResponse(error_fragment)
+                return HTMLResponse(
+                    with_toast(error_fragment, "error", "No se pudo ejecutar la simulación")
+                )
             context = base_context(
                 request, "panel", form=default_form_values(), result=None, errors=errors
             )
@@ -331,7 +406,13 @@ def create_web_router(
             result_template = jinja.get_template(
                 "partials/fragments/simulation_result.html"
             )
-            return HTMLResponse(result_template.render(context))
+            message = (
+                f"Simulación completada: {result.metrics.total_operations} operaciones, "
+                f"{format_eur(result.metrics.total_invested_eur)} invertidos"
+            )
+            return HTMLResponse(
+                with_toast(result_template.render(context), "positive", message)
+            )
         return render(request, "pages/panel.html", context)
 
     # --- GET /backtests -------------------------------------------------------

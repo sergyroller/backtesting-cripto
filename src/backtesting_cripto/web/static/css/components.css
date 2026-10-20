@@ -319,6 +319,57 @@
     color: var(--color-text-2);
   }
 
+  /* --- Fila expandible en móvil (§10.4, §13.7) --- */
+  .c-table__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .c-table__toggle .icon {
+    font-size: 14px;
+    color: var(--color-text-3);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .c-table__toggle[aria-expanded="true"] .icon {
+    transform: rotate(90deg);
+  }
+
+  /* Móvil: solo las 4 columnas prioritarias; el resto vive en el detalle. */
+  @media (max-width: 639px) {
+    .c-table--operations .col-seq,
+    .c-table--operations .col-index,
+    .c-table--operations .col-price {
+      display: none;
+    }
+  }
+
+  /* --- Indicadores de carga HTMX (§13.1, §13.12) --- */
+  .htmx-indicator {
+    display: none;
+  }
+
+  .htmx-request .htmx-indicator,
+  .htmx-request.htmx-indicator {
+    display: block;
+  }
+
+  .c-button.htmx-request {
+    cursor: progress;
+  }
+
+  .c-button.htmx-request .icon {
+    animation: c-spin 1s linear infinite;
+  }
+
   /* --- 13.8 Tooltip --- */
   [data-tip] {
     position: relative;

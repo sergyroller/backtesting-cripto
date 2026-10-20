@@ -19,6 +19,7 @@
       {% include "partials/fragments/error_summary.html" %}
     {% endif %}
     <div id="simulation-result">
+      <div class="htmx-indicator c-skeleton c-skeleton--chart" id="result-skeleton" aria-hidden="true"></div>
       {% if result %}
         {% include "partials/fragments/simulation_result.html" %}
       {% elif not has_data %}

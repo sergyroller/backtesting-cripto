@@ -8,7 +8,7 @@ and passed in ``customdata``: JS never formats numbers (section 12.5).
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from backtesting_cripto.domain.models import BacktestResult, EquityPoint, Fill
@@ -88,6 +88,36 @@ def _marker_size(amount_eur: Decimal) -> int:
     if amount_eur < Decimal("250"):
         return 12
     return 16
+
+
+def _date_ticks(days: Sequence[date], count: int = 7) -> dict[str, object]:
+    """Spanish date ticks generated on the server (§12.2).
+
+    Plotly 3 has no ``registerLocale`` in the basic bundle, so the month
+    names come from the server (``18 oct 2026``) as ``ticktext``.
+    """
+    if not days:
+        return {}
+    first, last = days[0], days[-1]
+    if first == last:
+        return {
+            "tickmode": "array",
+            "tickvals": [first.isoformat()],
+            "ticktext": [format_date_es(first)],
+        }
+
+    span = (last - first).days
+    step = max(1, span // (count - 1))
+    values: list[str] = []
+    labels: list[str] = []
+    cursor = first
+    while cursor < last:
+        values.append(cursor.isoformat())
+        labels.append(format_date_es(cursor))
+        cursor += timedelta(days=step)
+    values.append(last.isoformat())
+    labels.append(format_date_es(last))
+    return {"tickmode": "array", "tickvals": values, "ticktext": labels}
 
 
 def _buy_markers(
@@ -183,8 +213,9 @@ def build_g1_spec(result: BacktestResult) -> dict[str, object]:
         ],
         "layout": {
             "yaxis": {"title": {"text": "Euros (€)"}},
-            "xaxis": {"type": "date"},
+            "xaxis": {"type": "date", **_date_ticks([point.day for point in curve])},
         },
+        "config": {"scrollZoom": True},
     }
 
 
@@ -195,7 +226,8 @@ def build_g2_spec(
     index_days: list[str] = []
     index_values: list[float] = []
     index_custom: list[list[str]] = []
-    for day in sorted(fng_values):
+    index_day_dates = sorted(fng_values)
+    for day in index_day_dates:
         value = fng_values[day]
         index_days.append(day.isoformat())
         index_values.append(float(value))
@@ -256,8 +288,9 @@ def build_g2_spec(
         ],
         "layout": {
             "yaxis": {"title": {"text": "Índice (0–100)"}, "range": [-2, 102]},
-            "xaxis": {"type": "date"},
+            "xaxis": {"type": "date", **_date_ticks(index_day_dates)},
         },
+        "config": {"scrollZoom": True},
     }
 
 
@@ -321,7 +354,7 @@ def build_g4_spec(result: BacktestResult) -> dict[str, object]:
         ],
         "layout": {
             "yaxis": {"title": {"text": "Drawdown (%)"}, "ticksuffix": " %"},
-            "xaxis": {"type": "date"},
+            "xaxis": {"type": "date", **_date_ticks([point.day for point in curve])},
         },
     }
 

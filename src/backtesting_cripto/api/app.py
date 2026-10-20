@@ -16,10 +16,11 @@ from backtesting_cripto.storage.repository import BacktestRepository
 from backtesting_cripto.storage.run_store import RunStore
 from backtesting_cripto.web.views import create_web_router
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "backtesting.sqlite3"
 DEFAULT_RAW_DIR = PROJECT_ROOT / "data" / "raw"
-STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "static"
+STATIC_DIR = PACKAGE_ROOT / "web" / "static"
 
 API_DESCRIPTION = (
     "API del sistema de backtesting de acumulación de criptomonedas. "

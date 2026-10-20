@@ -160,6 +160,22 @@
     });
   }
 
+  /* --- aria-busy en el botón de envío durante peticiones HTMX (§13.12) --- */
+  document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    var elt = evt.detail && evt.detail.elt;
+    var button = elt && elt.querySelector ? elt.querySelector("button[type='submit']") : null;
+    if (button) {
+      button.setAttribute("aria-busy", "true");
+    }
+  });
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    var elt = evt.detail && evt.detail.elt;
+    var button = elt && elt.querySelector ? elt.querySelector("button[type='submit']") : null;
+    if (button) {
+      button.removeAttribute("aria-busy");
+    }
+  });
+
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("form[data-simulation-form]").forEach(function (form) {
       initBands(form);

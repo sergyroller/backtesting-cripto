@@ -7,4 +7,7 @@
 </a>
 <a class="l-topnav__item" href="/data"{% if current == "data" %} aria-current="page"{% endif %}>
   {% include "partials/icons/database.svg" %}<span>Datos</span>
+  {% if status and status.is_stale %}
+    <span class="c-nav__dot" role="img" aria-label="Datos desactualizados"></span>
+  {% endif %}
 </a>

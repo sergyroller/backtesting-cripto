@@ -50,8 +50,8 @@ def compute_file_sha256(path: Path) -> str:
 class RawStore:
     """Immutable storage of downloaded datasets plus their manifest."""
 
-    def __init__(self, root: Path) -> None:
-        self._root = root
+    def __init__(self, root: Path | str) -> None:
+        self._root = Path(root)
 
     @property
     def root(self) -> Path:

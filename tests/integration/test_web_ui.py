@@ -87,11 +87,13 @@ def test_panel_renders_in_spanish(client: TestClient) -> None:
     assert 'href="/data"' in html
 
 
-def test_panel_shows_empty_state_before_any_run(client: TestClient) -> None:
+def test_panel_runs_the_reference_simulation_when_empty(client: TestClient) -> None:
+    """Con datos pero sin simulaciones guardadas, el panel muestra la de referencia."""
     response = client.get("/")
     assert response.status_code == 200
-    assert "Ejecuta tu primera simulación" in response.text
-    assert "121 compras" in response.text
+    assert "Ejecuta tu primera simulación" not in response.text
+    assert INVESTED in response.text
+    assert 'data-chart-for="chart-g1"' in response.text
 
 
 def test_run_simulation_from_the_ui(client: TestClient) -> None:
@@ -152,6 +154,30 @@ def test_htmx_request_returns_only_the_fragment(client: TestClient) -> None:
     assert "<html" not in html  # solo el fragmento
     assert INVESTED in html
 
+
+def test_htmx_response_includes_completion_toast(client: TestClient) -> None:
+    response = post_simulation(client, headers={"HX-Request": "true"})
+    assert response.status_code == 200
+    assert 'hx-swap-oob="true"' in response.text
+    assert "Simulación completada" in response.text
+    assert "121 operaciones" in response.text
+
+
+def test_htmx_error_response_includes_toast(client: TestClient) -> None:
+    response = post_simulation(
+        client, headers={"HX-Request": "true"}, strategy_params_json=OVERLAPPING_PARAMS
+    )
+    assert response.status_code == 200
+    assert 'hx-swap-oob="true"' in response.text
+    assert "No se pudo ejecutar la simulación" in response.text
+
+
+def test_panel_includes_loading_skeleton(client: TestClient) -> None:
+    html = client.get("/").text
+    assert 'id="result-skeleton"' in html
+    assert "c-skeleton" in html
+    assert 'hx-indicator="#result-skeleton"' in html
+
 def test_operations_pagination_fragment(client: TestClient) -> None:
     post_simulation(client)
     response = client.get("/ui/operations?page=1&reason=all")
@@ -163,6 +189,37 @@ def test_operations_pagination_fragment(client: TestClient) -> None:
     filtered = client.get("/ui/operations?reason=monday_10_14")
     assert filtered.status_code == 200
     assert "Lunes 10–14" in filtered.text
+
+
+def test_operations_table_is_mobile_friendly(client: TestClient) -> None:
+    post_simulation(client)
+    html = client.get("/ui/operations?page=1").text
+    # Fila expandible accesible (§10.4, §13.7).
+    assert "data-row-toggle" in html
+    assert 'aria-expanded="false"' in html
+    assert 'aria-controls="row-detail-1"' in html
+    # Columnas marcadas para ocultar en móvil.
+    assert "col-seq" in html
+    assert "col-index" in html
+    assert "col-price" in html
+
+
+def test_charts_use_spanish_date_ticks(client: TestClient) -> None:
+    post_simulation(client)
+    html = client.get("/").text
+    assert "ticktext" in html
+    assert "18 oct 2026" in html  # nombres de mes en español desde el servidor
+
+
+def test_charts_show_empty_state_without_operations(client: TestClient) -> None:
+    params = json.dumps(
+        {"daily_below_threshold": 0, "daily_amount_eur": "50,00", "weekly_bands": []}
+    )
+    response = post_simulation(client, strategy_params_json=params)
+    assert response.status_code == 200
+    assert "Sin operaciones en este periodo" in response.text
+    assert 'data-chart-for="chart-g1"' not in response.text
+    assert "—" in response.text  # valor ausente, nunca 0,00 € (§6.5)
 
 
 # --- GET /backtests -----------------------------------------------------------
@@ -255,6 +312,27 @@ def test_data_sync_from_the_ui(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 
 # --- Estáticos ----------------------------------------------------------------
+
+
+def test_default_paths_point_to_the_project_root() -> None:
+    from backtesting_cripto.api.app import DEFAULT_DB_PATH, DEFAULT_RAW_DIR
+
+    project_root = Path(__file__).resolve().parents[2]
+    expected_db = project_root / "data" / "backtesting.sqlite3"
+    expected_raw = project_root / "data" / "raw"
+    assert expected_db == DEFAULT_DB_PATH
+    assert expected_raw == DEFAULT_RAW_DIR
+    assert expected_raw.exists(), "data/raw must exist in the repository"
+
+
+def test_create_app_without_arguments_finds_the_project_data() -> None:
+    """Sin argumentos, la app debe usar la base de datos del proyecto."""
+    app = create_app()
+    try:
+        assert app.state.repo.has_datasets() is True
+    finally:
+        app.state.repo.close()
+        app.state.run_store.close()
 
 
 def test_static_assets_are_served(client: TestClient) -> None:
