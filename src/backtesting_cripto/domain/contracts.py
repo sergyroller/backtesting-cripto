@@ -56,4 +56,8 @@ class Strategy(Protocol):
 class ExecutionModel(Protocol):
     """Turns an order intention into a fill using the price series."""
 
+    def execution_day(self, decision_day: date) -> date:
+        """Day whose close executes a decision taken on decision_day."""
+        ...
+
     def execute(self, intent: OrderIntent, prices: PriceSeries) -> Fill | None: ...
