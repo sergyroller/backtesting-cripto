@@ -1,0 +1,10 @@
+{% set current = active_nav | default("panel") %}
+<a class="l-bottomnav__item" href="/"{% if current == "panel" %} aria-current="page"{% endif %}>
+  {% include "partials/icons/chart-line.svg" %}<span>Simulador</span>
+</a>
+<a class="l-bottomnav__item" href="/backtests"{% if current == "backtests" %} aria-current="page"{% endif %}>
+  {% include "partials/icons/history.svg" %}<span>Historial</span>
+</a>
+<a class="l-bottomnav__item" href="/data"{% if current == "data" %} aria-current="page"{% endif %}>
+  {% include "partials/icons/database.svg" %}<span>Datos</span>
+</a>

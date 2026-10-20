@@ -1,0 +1,9 @@
+{% if status %}
+  {% include "partials/icons/database.svg" %}
+  <span>Datos hasta el {{ status.available_end | date_es }}</span>
+  {% if status.is_stale %}
+    <span class="c-badge c-badge--warning">Desactualizado</span>
+  {% endif %}
+{% else %}
+  <span>Sin datos locales</span>
+{% endif %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Simulador{% endblock %}
+{% block content %}
+<div class="l-panel">
+  <section class="l-section" aria-labelledby="panel-title">
+    <div>
+      <h1 id="panel-title">Simulador de acumulación</h1>
+      <p class="t-caption">
+        Estrategia <strong>Acumulación por Crypto Fear &amp; Greed Index</strong> sobre BTC/EUR ·
+        {% if result %}periodo {{ result.config.start_date | date_es }} – {{ result.config.end_date | date_es }}{% else %}configura los parámetros y ejecuta tu primera simulación{% endif %}
+      </p>
+    </div>
+    {% include "partials/fragments/simulation_form.html" %}
+  </section>
+
+  <section class="l-section" aria-live="polite">
+    <h2 class="sr-only">Resultado de la simulación</h2>
+    {% if errors %}
+      {% include "partials/fragments/error_summary.html" %}
+    {% endif %}
+    <div id="simulation-result">
+      {% if result %}
+        {% include "partials/fragments/simulation_result.html" %}
+      {% elif not has_data %}
+        <div class="c-card">
+          <div class="c-empty">
+            {% include "partials/icons/database.svg" %}
+            <p class="c-empty__title">Aún no hay datos históricos</p>
+            <p class="c-empty__text">
+              Sincroniza los datos del índice Fear &amp; Greed y de BTC/EUR para poder ejecutar simulaciones.
+              El proceso descarga el histórico completo y lo guarda en tu equipo.
+            </p>
+            <a class="c-button c-button--primary" href="/data">Ir a Datos</a>
+          </div>
+        </div>
+      {% else %}
+        <div class="c-card">
+          <div class="c-empty">
+            {% include "partials/icons/chart-line.svg" %}
+            <p class="c-empty__title">Ejecuta tu primera simulación</p>
+            <p class="c-empty__text">
+              Con los parámetros por defecto sobre el rango de referencia
+              ({{ status.available_start | date_es }} → {{ status.available_end | date_es }})
+              la estrategia realiza <strong>121 compras</strong> por <strong>13 300,00 €</strong>.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -102,6 +102,10 @@ class MemoryIndicatorSeries:
     def value_on(self, day: date) -> Decimal | None:
         return self._values.get(day)
 
+    def to_dict(self) -> dict[date, Decimal]:
+        """All readings keyed by day (used by the web layer for charts)."""
+        return dict(self._values)
+
     def date_bounds(self) -> tuple[date, date]:
         if not self._days:
             msg = "indicator series is empty"

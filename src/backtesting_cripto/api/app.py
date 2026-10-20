@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backtesting_cripto import __version__
 from backtesting_cripto.api.routes import create_router, register_exception_handlers
@@ -13,10 +14,12 @@ from backtesting_cripto.services.data_service import DataService
 from backtesting_cripto.storage.raw_store import RawStore
 from backtesting_cripto.storage.repository import BacktestRepository
 from backtesting_cripto.storage.run_store import RunStore
+from backtesting_cripto.web.views import create_web_router
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "backtesting.sqlite3"
 DEFAULT_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "static"
 
 API_DESCRIPTION = (
     "API del sistema de backtesting de acumulación de criptomonedas. "
@@ -62,4 +65,8 @@ def create_app(db_path: Path | None = None, raw_dir: Path | None = None) -> Fast
         create_router(data_service=data_service, backtest_service=backtest_service),
         prefix="/api",
     )
+    app.include_router(
+        create_web_router(data_service=data_service, backtest_service=backtest_service)
+    )
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     return app

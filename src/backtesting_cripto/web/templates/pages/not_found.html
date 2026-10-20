@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}No encontrado{% endblock %}
+{% block content %}
+<div class="c-card">
+  <div class="c-empty">
+    {% include "partials/icons/circle-alert.svg" %}
+    <p class="c-empty__title">Esta simulación no existe</p>
+    <p class="c-empty__text">
+      No hemos encontrado ninguna ejecución con el identificador
+      <span class="t-mono">{{ run_id }}</span>. Puede que se haya ejecutado en otra base de datos local.
+    </p>
+    <a class="c-button c-button--primary" href="/backtests">Ver el historial</a>
+  </div>
+</div>
+{% endblock %}

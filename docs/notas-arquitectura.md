@@ -13,60 +13,76 @@ Este documento recoge las revisiones del arquitecto tras cada fase y los **apunt
 | **F2 — Ingesta y almacenamiento** | ✅ Aprobada | `raw_store` con SHA-256, proveedores (`bgeometrics`, `alternative.me`, `bitstamp`), `dataset_checks`, `repository` SQLite y `data/raw/` congelado en git. |
 | **F3 — Motor, cartera y métricas** | ✅ Aprobada | `calendar`, `execution`, `portfolio`, `runner`, `calculator` y `consistency_checks` verificados. |
 | **F4 — Estrategia Fear & Greed** | ✅ Aprobada | `StrategyRegistry`, `FearGreedStrategy`, `indicators/registry.py` y test de regresión offline `[2018-02-01, 2026-10-18]` en verde. |
-| **F5 — Persistencia de runs y API REST** | 🔧 Pendiente saneamiento (4 puntos) | Funcionalidad completa y 151 tests pasando hoy, pero se detectaron **4 fallos técnicos** (incluida una bomba de tiempo en `_consolidate_from_raw` que fallaría mañana). Ver sección abajo. |
-| **F6 — Interfaz web** | ⏳ Pendiente (tras sanear F5) | Seguir `docs/design/DESIGN_SYSTEM.md`, `docs/design/tokens.css` y `docs/design/plotly-theme.js` (ya validados: 3 vistas `/`, `/backtests`, `/data`). |
+| **F5 — Persistencia de runs y API REST** | ✅ Aprobada | `RunStore`, `DataService` (hidratación offline blindada a futuro + sync), `BacktestService`, API REST (`/api/*`) con `lifespan` y 154 tests en verde (0 warnings). |
+| **F6 — Interfaz web** | ⏳ Pendiente (siguiente) | Ver checklist obligatorio de F6 abajo (basado en `docs/planificacion.md` y `docs/design/DESIGN_SYSTEM.md`). |
 | **F7 — Documentación final y pulido** | ⏳ Pendiente | — |
 
 ---
 
-## Correcciones obligatorias de la Fase F5 (aplicar y verificar antes de empezar F6)
+## Apuntes obligatorios tras la revisión de F5
 
-En la auditoría experta de F5 se han detectado **4 problemas técnicos** que debes corregir y cubrir con tests:
+### 1. Checklist obligatorio para la Fase F6 (Interfaz web: Jinja2 + HTMX + Plotly.js)
 
-### 1. Bomba de tiempo en `DataService._consolidate_from_raw` (`src/backtesting_cripto/services/data_service.py`)
-- **El bug:** El fichero crudo de BGeometrics (`data/raw/bgeometrics/fear_greed_bgeometrics_81b1300bee9697ff.json`) contiene registros hasta el `2026-10-20` (día en curso en el momento de la descarga), mientras que Bitstamp solo contiene velas cerradas hasta el `2026-10-19`.
-  En `_consolidate_from_raw()` (líneas 199–212):
-  ```python
-  closed_day = last_closed_utc_day()
-  fng_values = [value for value in self._load_raw_fear_greed() if value.day <= closed_day]
-  bars = [bar for bar in self._load_raw_prices() if bar.day <= closed_day]
-  ...
-  available_last = min(fng_values[-1].day, bars[-1].day)
-  validate_fear_greed_series(fng_values, last_closed_day=available_last)
-  ```
-  Hoy (`2026-10-20`), `closed_day` es `2026-10-19` y filtra el `2026-10-20` de `fng_values`. **Pero a partir de mañana (`2026-10-21`) o en cualquier clon offline futuro**, `closed_day` será `>= 2026-10-20`, por lo que `fng_values[-1].day` será `2026-10-20`, `bars[-1].day` será `2026-10-19`, `available_last` será `2026-10-19`, y `validate_fear_greed_series(fng_values, last_closed_day=available_last)` **lanzará `DataValidationError: fear_greed: 2026-10-20 is after the last closed day 2026-10-19`**.
-- **Corrección obligatoria:**
-  1. Permitir pasar `now: datetime | None = None` a `ensure_populated(self, now: datetime | None = None) -> bool` y `_consolidate_from_raw(self, now: datetime | None = None) -> None`.
-  2. En `_consolidate_from_raw`, después de calcular `available_last = min(closed_day, fng_values[-1].day, bars[-1].day)`, **recortar ambas listas a `<= available_last` antes de validar e insertar en SQLite**:
-     ```python
-     fng_values = [value for value in fng_values if value.day <= available_last]
-     bars = [bar for bar in bars if bar.day <= available_last]
-     validate_fear_greed_series(fng_values, last_closed_day=available_last)
-     validate_price_bars(bars, last_closed_day=available_last)
-     ```
-  3. Añadir un test en `tests/integration/test_api_and_services.py` (`test_ensure_populated_works_when_clock_is_in_the_future`) llamando a `service.ensure_populated(now=datetime(2027, 6, 1, tzinfo=UTC))` sobre `REAL_RAW_DIR` y comprobando que hidrata limpiamente hasta `2026-10-19` sin lanzar `DataValidationError`.
+Implementar siguiendo **`docs/planificacion.md` (Sección H, F6)** y la especificación validada de **`docs/design/DESIGN_SYSTEM.md`**, **`docs/design/tokens.css`** y **`docs/design/plotly-theme.js`**:
 
-### 2. Orden determinista en `_load_raw_prices` y limpieza de archivos duplicados en `data/raw/`
-- **El bug:**
-  1. En `data/raw/MANIFEST.json` quedaron duplicados los 5 archivos del `2026-10-19` junto con los 5 archivos nuevos del `2026-10-20` (10 archivos en total en git).
-  2. Además, en `DataService._load_raw_prices()` (y en los helpers `load_frozen_price_bars` / `load_frozen_series` de `tests/`), se itera `sorted(manifest, key=lambda item: item.relative_path)` usando `bars_by_day.setdefault(bar.day, bar)`, lo cual elige qué vela gana según el orden alfabético del hash SHA-256 en lugar de usar la descarga más reciente (`retrieved_at`).
-- **Corrección obligatoria:**
-  1. En `DataService._load_raw_prices()` (y en `tests/data/test_frozen_dataset.py` y `tests/integration/test_fear_greed_regression.py`), ordenar las entradas del manifiesto por `(entry.retrieved_at, entry.relative_path)` y asignar `bars_by_day[bar.day] = bar` (para que prevalezca siempre la entrada más reciente).
-  2. Eliminar de `data/raw/` los 5 archivos antiguos del `2026-10-19` (`fear_greed_bgeometrics_671b9a1ec59f69f4.json` y las 4 páginas `4ece8b1c3fcdd17c`, `791a42920f9b35bb`, `dbb4826db0264d26`, `941f318fd6683ed7`) y dejar en `data/raw/MANIFEST.json` únicamente las 5 entradas vigentes del `2026-10-20` (que cubren todo el histórico hasta el `2026-10-19`).
+1. **Dependencias en `pyproject.toml`**:
+   - Añadir `"jinja2>=3.1"` y `"python-multipart>=0.0.9"` (si se reciben formularios HTML `application/x-www-form-urlencoded` en FastAPI) a `dependencies` y actualizar `uv.lock`.
 
-### 3. Ciclo de vida de conexiones SQLite en `api/app.py` y reutilización de `self._repo` en `BacktestService.get_backtest`
-- **El bug:**
-  1. `create_app` en `src/backtesting_cripto/api/app.py` abre `repo = BacktestRepository(...)` y `run_store = RunStore(...)`, pero nunca los cierra al apagar la aplicación (falta un `lifespan` con `@asynccontextmanager` en FastAPI que haga `repo.close()` y `run_store.close()` al finalizar).
-  2. `BacktestService.get_backtest(run_id)` llama a `self._run_store.get_run(run_id)` sin pasar `prices`, haciendo que `RunStore.get_run` abra y cierre una conexión `BacktestRepository(self._db_path)` nueva en cada petición `GET /api/backtests/{run_id}` pese a que `BacktestService` ya tiene `self._repo`.
-- **Corrección obligatoria:**
-  1. En `api/app.py`, añadir un `lifespan` en `FastAPI(..., lifespan=lifespan)` que cierre `repo.close()` y `run_store.close()` al salir del contexto de la aplicación.
-  2. En `BacktestService.get_backtest(run_id)`, cargar los precios con `self._repo` (o pasar `self._repo` / `prices` a `self._run_store.get_run`) para no abrir conexiones SQLite extra innecesarias.
+2. **Activos estáticos en `src/backtesting_cripto/web/static/`**:
+   - **CSS propio con `@layer tokens, base, layout, components, utilities`:**
+     - Copiar `docs/design/tokens.css` a `src/backtesting_cripto/web/static/css/tokens.css` (único archivo CSS con valores hex; contiene `#0DC3A4`, paleta clara y `[data-theme="dark"]`).
+     - Crear `base.css`, `layout.css`, `components.css` y `charts.css` implementando los componentes y layouts de `docs/design/DESIGN_SYSTEM.md` (§5–§7, §11–§16).
+   - **JavaScript propio (≤ 250 líneas en total):**
+     - `src/backtesting_cripto/web/static/js/theme.js`: `setThemePreference("light" | "dark" | "system")`, persistencia en `localStorage["theme-preference"]`, listener de `matchMedia` y emisión del evento `bt:theme-changed` (§8.3).
+     - `src/backtesting_cripto/web/static/js/charts.js`: basado en `docs/design/plotly-theme.js` (lectura de tokens con `cssToken`, `baseLayout`, `initChartsIn` en `DOMContentLoaded` y `htmx:load`, y `Plotly.relayout` + `Plotly.restyle` al recibir `bt:theme-changed`).
+     - `src/backtesting_cripto/web/static/js/app.js`: helpers mínimos de UI (añadir/eliminar filas de tramos semanales en el formulario, atajos de rango de fechas `1A / 3A / 5A / Todo`, pestañas *Resumen / Operaciones / Supuestos*, acordeón de filas en móvil).
+   - **Librerías vendor locales (`src/backtesting_cripto/web/static/vendor/`):**
+     - Descargar y servir localmente `htmx` y `plotly` (bundle cartesian minificado) desde `/static/vendor/` para cumplir la regla de cero dependencias de CDN en tiempo de ejecución (o con fallback claro si se ejecuta sin red).
 
-### 4. Silenciar el `StarletteDeprecationWarning` de `starlette.testclient` en `pyproject.toml`
-- Añadir en `[tool.pytest.ini_options]` de `pyproject.toml`:
-  ```toml
-  filterwarnings = [
-      "ignore:Using `httpx` with `starlette.testclient` is deprecated:DeprecationWarning",
-  ]
-  ```
-  para que `uv run pytest` termine con **0 warnings**.
+3. **Formateadores españoles en servidor (`src/backtesting_cripto/web/`):**
+   - Implementar y registrar en el entorno Jinja2 los filtros exactos del **§6.5 de `DESIGN_SYSTEM.md`**:
+     - `eur`: `13 300,00 €` (separador de miles espacio fino `\u202f` o espacio no separable, coma decimal, 2 decimales, sufijo ` €`).
+     - `signed_eur`: `+67 101,26 €` / `−380,00 €` (con signo explícito `+` o `−` U+2212).
+     - `pct` / `signed_pct`: `+504,52 %` / `−50,00 %` (2 decimales con coma).
+     - `btc`: `1,10037310 BTC` (8 decimales con coma).
+     - `date_es`: `18 oct 2026` (formato corto en español).
+     - `reason_es`: traduce `daily_<10` → `Diaria (< 10)`, `monday_10_14` → `Lunes 10–14`, etc.
+
+4. **Las 3 vistas principales y fragmentos HTMX (`src/backtesting_cripto/web/templates/` y `api/`)**:
+   - Montar `/static` en `create_app` y exponer las **3 vistas acordadas en `DESIGN_SYSTEM.md` (§9.1)**:
+     1. **`GET /` — Simulador / Panel (`pages/panel.html`):**
+        - Cabecera de contexto con estado de datos (`"Datos hasta el …"`, último día UTC cerrado) y control de tema (`Claro / Oscuro / Sistema`) + script anti-FOUC en `<head>` (§8.2).
+        - Formulario configurable en español:
+          - Activo (`BTC/EUR`), estrategia (`Fear & Greed Index`).
+          - Rango de fechas (`start_date`, `end_date`) acotado a `[available_start, available_end]` (`2018-02-01` → último día cerrado) + chips rápidos `1 A · 3 A · 5 A · Todo`.
+          - Umbral diario (`daily_below_threshold`, por defecto `10`) e importe diario (`daily_amount_eur`, por defecto `50,00 €`).
+          - Tramos semanales en lunes (`weekly_bands`: lista editable de `min_value`, `max_value`, `amount_eur` con botón de añadir/quitar tramo; por defecto `10–14: 200 €`, `15–19: 150 €`, `20–24: 100 €`).
+          - Modo de ejecución (`close_same_day` — cierre del mismo día D, o `close_next_day` — cierre del día siguiente D+1).
+        - Al entrar en `/`, si ya hay alguna simulación guardada muestra la más reciente (o ejecuta/muestra una simulación inicial con los parámetros por defecto sobre el rango disponible) para que el dashboard nunca aparezca vacío si hay datos.
+        - Envío del formulario (por HTMX `POST /ui/backtests` o similar, además de funcionar con envío estándar) que valida parámetros, ejecuta `backtest_service.execute_backtest(config)` y actualiza el bloque de resultados (o muestra errores de validación en español si hay tramos solapados o fechas inválidas).
+        - **Bloque de resultados del backtest (`partials/fragments/simulation_result.html`):**
+          - **4 tarjetas de métricas primarias (§11.2 Bloque B):** Valor de la cartera (€), Beneficio/Pérdida (€ y % con signo y color semántico), Capital invertido (€ y nº de operaciones), BTC acumulado (8 decimales y coste medio €/BTC).
+          - **Fila de métricas secundarias (§11.2 Bloque D):** Drawdown máximo (%), desglose de operaciones por tramo, precio final BTC/EUR, modo de ejecución.
+          - **Gráficos interactivos Plotly (§12.3):**
+            - `G1`: Capital invertido vs. Valor de la cartera + marcadores de compra.
+            - `G2`: Evolución del índice Fear & Greed (línea violeta `--color-fng`) con marcadores de compras (`--color-brand`).
+            - `G3`: Barras horizontales de operaciones por tramo del índice.
+            - `G4`: Curva de drawdown (%).
+            - Cada gráfico con su `<script type="application/json" data-chart-for="...">`, `role="img"` + `aria-label` y `<details class="c-chart-alt">` accesible (§17.3).
+          - **Pestaña / sección de Operaciones individuales (`.c-table`, §10.4 y §13.7):**
+            - Las 7 columnas en escritorio (`#`, `Fecha`, `Índice F&G`, `Regla`, `Importe`, `Precio BTC`, `BTC comprados`) y soporte de filtrado por tramo y paginación HTMX (50 por página).
+          - **Pestaña / sección de Supuestos y Metadatos:** `run_id`, `created_at`, `code_version`, `config_hash`, `dataset_hash`, `result_hash`, incidentes (si los hubiera) y supuestos de simulación.
+     2. **`GET /backtests` y `GET /backtests/{run_id}` — Historial y detalle (`pages/backtests.html` y `pages/backtest_detail.html`):**
+        - Listado de todas las simulaciones guardadas en `RunStore` con enlace a su vista de detalle `/backtests/{run_id}` y enlace para precargar su configuración en el Simulador (`/`).
+     3. **`GET /data` y `POST /ui/data/sync` — Estado de datos (`pages/data.html`):**
+        - Tabla de fuentes locales (`bgeometrics`/`alternative.me` y `bitstamp`), cobertura (`first_day` → `last_day`), `record_count`, `sha256`, `dataset_hash`, explicación de los 39 días de hueco histórico del índice, botón **"Actualizar datos"** (HTMX) y atribuciones visibles a **alternative.me**, **BGeometrics** y **Bitstamp**.
+
+5. **Tests de interfaz web en `tests/unit/test_web_filters.py` y `tests/integration/test_web_ui.py`**:
+   - Tests unitarios de todos los filtros Jinja2 (`eur`, `signed_eur`, `pct`, `signed_pct`, `btc`, `date_es`, `reason_es`) y de las reglas de contraste/tokens (`tokens.css` es el único CSS con colores hex).
+   - Tests de integración con `TestClient`:
+     - `GET /` devuelve `200 OK`, HTML en español (`<html lang="es">`), incluye el script anti-FOUC, las tarjetas de métricas y los datos JSON de los gráficos.
+     - Enviar una simulación desde la UI (`POST /ui/backtests`) con parámetros válidos en `[2018-02-01, 2026-10-18]` devuelve el fragmento/página con `13 300,00 €`, `121` operaciones, `1,10037310 BTC` y `80 401,26 €`.
+     - Enviar una simulación desde la UI con tramos solapados devuelve mensaje de error claro en español sin romper la página.
+     - `GET /backtests` y `GET /backtests/{run_id}` devuelven `200 OK` (y `404` en español si el `run_id` no existe).
+     - `GET /data` y `POST /ui/data/sync` devuelven `200 OK` con el estado de las fuentes y las atribuciones.
+     - `GET /static/css/tokens.css` y `GET /static/js/charts.js` se sirven con `200 OK`.

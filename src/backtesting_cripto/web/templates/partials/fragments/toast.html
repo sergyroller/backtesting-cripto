@@ -1,0 +1,5 @@
+<div class="c-toast {% if tone == "error" %}c-toast--error{% else %}c-toast--positive{% endif %}" data-toast role="status">
+  {% if tone == "error" %}{% include "partials/icons/circle-alert.svg" %}
+  {% else %}{% include "partials/icons/circle-check.svg" %}{% endif %}
+  <span>{{ message }}</span>
+</div>

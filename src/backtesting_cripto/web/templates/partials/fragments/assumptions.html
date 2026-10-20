@@ -1,0 +1,34 @@
+<div class="l-section">
+  <h3 class="c-card__title">Supuestos de la simulación</h3>
+  <ul class="l-section" style="list-style: disc; padding-left: var(--space-5);">
+    <li class="t-caption">Compras 100 % directas: sin comisiones ni deslizamiento.</li>
+    <li class="t-caption">Ejecución al cierre UTC del día de la señal ({% if context.execution_mode == "close_next_day" %}cierre del día siguiente, D+1{% else %}mismo día, D{% endif %}).</li>
+    <li class="t-caption">Un día natural solo computa cuando ha terminado en UTC y su vela diaria está cerrada.</li>
+    <li class="t-caption">Los días sin dato del índice Fear &amp; Greed no generan compra.</li>
+    <li class="t-caption">BTC acumulado con redondeo a 8 decimales (ROUND_DOWN); importes en EUR a 2 decimales (ROUND_HALF_UP).</li>
+  </ul>
+
+  <h3 class="c-card__title">Metadatos de la ejecución</h3>
+  <dl class="c-meta">
+    <div class="c-meta__row"><dt>run_id</dt><dd>{{ context.run_id }}</dd></div>
+    <div class="c-meta__row"><dt>Creada</dt><dd>{{ context.created_at }}</dd></div>
+    <div class="c-meta__row"><dt>Versión del código</dt><dd>{{ context.code_version }}</dd></div>
+    <div class="c-meta__row"><dt>config_hash</dt><dd>{{ context.config_hash }}</dd></div>
+    <div class="c-meta__row"><dt>dataset_hash</dt><dd>{{ context.dataset_hash }}</dd></div>
+    <div class="c-meta__row"><dt>result_hash</dt><dd>{{ context.result_hash }}</dd></div>
+  </dl>
+
+  {% if incidents %}
+    <div class="c-alert c-alert--info">
+      {% include "partials/icons/info.svg" %}
+      <div>
+        <strong>{{ incidents | length }} incidencia(s) durante la simulación:</strong>
+        <ul style="list-style: disc; padding-left: var(--space-5);">
+          {% for incident in incidents %}<li class="t-mono">{{ incident }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% else %}
+    <p class="t-caption">Sin incidencias: todos los precios necesarios estaban disponibles.</p>
+  {% endif %}
+</div>

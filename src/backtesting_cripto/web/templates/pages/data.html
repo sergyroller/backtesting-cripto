@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Datos{% endblock %}
+{% block content %}
+<div class="l-section">
+  <div>
+    <h1>Datos históricos</h1>
+    <p class="t-caption">
+      Los backtests se ejecutan siempre sobre datos locales: esta vista muestra qué hay almacenado
+      y permite actualizarlo desde las fuentes oficiales.
+    </p>
+  </div>
+
+  <div id="data-status">
+    {% include "partials/fragments/data_status.html" %}
+  </div>
+</div>
+{% endblock %}

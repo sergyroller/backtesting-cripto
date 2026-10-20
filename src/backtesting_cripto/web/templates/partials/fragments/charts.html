@@ -1,0 +1,112 @@
+<div class="l-section">
+  <figure class="c-card c-chart" style="margin: 0;">
+    <div class="c-chart__header">
+      <figcaption class="c-chart__title">Capital invertido vs. valor de la cartera</figcaption>
+      <p class="c-chart__caption">Cada punto es un día; los triángulos son compras ejecutadas.</p>
+    </div>
+    <div class="c-chart__plot" id="chart-g1" data-chart role="img"
+         aria-label="Gráfico de líneas: capital invertido frente al valor de la cartera a lo largo del periodo, con marcadores de compra."></div>
+    <script type="application/json" data-chart-for="chart-g1">{{ charts.g1 | chart_json | safe }}</script>
+    <details class="c-chart-alt">
+      <summary>Ver datos en tabla</summary>
+      <div class="c-chart-alt__table">
+        <table class="c-table">
+          <caption>Primeros y últimos puntos de la curva (valores formateados)</caption>
+          <thead><tr><th scope="col">Día</th><th scope="col">Invertido</th><th scope="col">Valor</th><th scope="col">Diferencia</th></tr></thead>
+          <tbody>
+            {% for point in alt.g1_points %}
+              <tr>
+                <th scope="row">{{ point.day | date_es }}</th>
+                <td class="t-num">{{ point.invested }}</td>
+                <td class="t-num">{{ point.value }}</td>
+                <td class="t-num">{{ point.diff }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </figure>
+
+  <div class="l-grid l-grid--charts">
+    <figure class="c-card c-chart" style="margin: 0;">
+      <div class="c-chart__header">
+        <figcaption class="c-chart__title">Evolución del índice Fear &amp; Greed</figcaption>
+        <p class="c-chart__caption">Los huecos son días sin publicación del índice (día sin dato = no se compra).</p>
+      </div>
+      <div class="c-chart__plot c-chart__plot--secondary" id="chart-g2" data-chart role="img"
+           aria-label="Gráfico de líneas del índice Fear & Greed entre 0 y 100 con marcadores de compra."></div>
+      <script type="application/json" data-chart-for="chart-g2">{{ charts.g2 | chart_json | safe }}</script>
+      <details class="c-chart-alt">
+        <summary>Ver datos en tabla</summary>
+        <div class="c-chart-alt__table">
+          <table class="c-table">
+            <caption>Resumen del índice en el periodo</caption>
+            <thead><tr><th scope="col">Día</th><th scope="col">Índice</th><th scope="col">Situación</th></tr></thead>
+            <tbody>
+              {% for point in alt.g2_points %}
+                <tr>
+                  <th scope="row">{{ point.day | date_es }}</th>
+                  <td class="t-num">{{ point.value }}</td>
+                  <td>{{ point.label }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </figure>
+
+    <figure class="c-card c-chart" style="margin: 0;">
+      <div class="c-chart__header">
+        <figcaption class="c-chart__title">Operaciones por tramo del índice</figcaption>
+      </div>
+      <div class="c-chart__plot c-chart__plot--secondary" id="chart-g3" data-chart role="img"
+           aria-label="Gráfico de barras horizontales con el número de operaciones por tramo del índice."></div>
+      <script type="application/json" data-chart-for="chart-g3">{{ charts.g3 | chart_json | safe }}</script>
+      <details class="c-chart-alt">
+        <summary>Ver datos en tabla</summary>
+        <div class="c-chart-alt__table">
+          <table class="c-table">
+            <caption>Operaciones por regla</caption>
+            <thead><tr><th scope="col">Regla</th><th scope="col">Operaciones</th></tr></thead>
+            <tbody>
+              {% for reason, count in metrics.operations_by_reason.items() %}
+                <tr><th scope="row">{{ reason | reason_es }}</th><td class="t-num">{{ count }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </figure>
+  </div>
+
+  <figure class="c-card c-chart" style="margin: 0;">
+    <div class="c-chart__header">
+      <figcaption class="c-chart__title">Curva de drawdown</figcaption>
+      <p class="c-chart__caption">Caída desde el máximo acumulado de la cartera.</p>
+    </div>
+    <div class="c-chart__plot c-chart__plot--secondary" id="chart-g4" data-chart role="img"
+         aria-label="Gráfico de área de la curva de drawdown, siempre en valor cero o negativo."></div>
+    <script type="application/json" data-chart-for="chart-g4">{{ charts.g4 | chart_json | safe }}</script>
+    <details class="c-chart-alt">
+      <summary>Ver datos en tabla</summary>
+      <div class="c-chart-alt__table">
+        <table class="c-table">
+          <caption>Primeros y últimos puntos del drawdown</caption>
+          <thead><tr><th scope="col">Día</th><th scope="col">Drawdown</th></tr></thead>
+          <tbody>
+            {% for point in alt.g4_points %}
+              <tr><th scope="row">{{ point.day | date_es }}</th><td class="t-num">{{ point.value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </figure>
+
+  <p class="t-caption">
+    Simulación sin comisiones ni deslizamiento · ejecución al cierre UTC del día de la señal ·
+    un día computa cuando su vela cierra en UTC.
+  </p>
+</div>

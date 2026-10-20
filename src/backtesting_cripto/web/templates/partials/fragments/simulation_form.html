@@ -1,0 +1,136 @@
+{% set available_start = form.available_start %}
+{% set available_end = form.available_end %}<form
+  class="c-card l-section"
+  data-simulation-form
+  hx-post="/ui/backtests"
+  hx-target="#simulation-result"
+  hx-swap="innerHTML"
+  hx-indicator="#run-button"
+  action="/ui/backtests"
+  method="post"
+>
+  <h2 class="c-card__title">{% include "partials/icons/sliders-horizontal.svg" %}Configuración de la simulación</h2>
+
+  <div class="c-field">
+    <label class="c-field__label" for="strategy_id">Estrategia</label>
+    <select class="c-field__control" id="strategy_id" name="strategy_id">
+      <option value="fear_greed" selected>Acumulación por Crypto Fear &amp; Greed Index</option>
+    </select>
+    <p class="c-field__help">Activo: BTC/EUR. Los datos nunca salen de tu equipo.</p>
+  </div>
+
+  <div class="c-field">
+    <span class="c-field__label" id="period-label">Periodo de análisis</span>
+    <div class="c-field-row" role="group" aria-labelledby="period-label">
+      <div class="c-field">
+        <label class="c-field__label" for="start_date">Desde</label>
+        <input class="c-field__control" type="date" id="start_date" name="start_date"
+               data-range-start
+               min="{{ available_start }}" max="{{ available_end }}"
+               value="{{ form.start_date }}" required>
+      </div>
+      <div class="c-field">
+        <label class="c-field__label" for="end_date">Hasta</label>
+        <input class="c-field__control" type="date" id="end_date" name="end_date"
+               data-range-end
+               min="{{ available_start }}" max="{{ available_end }}"
+               value="{{ form.end_date }}" required>
+      </div>
+    </div>
+    <div class="c-filterbar" role="group" aria-label="Atajos de periodo">
+      <button type="button" class="c-chip" data-range-years="1">1 A</button>
+      <button type="button" class="c-chip" data-range-years="3">3 A</button>
+      <button type="button" class="c-chip" data-range-years="5">5 A</button>
+      <button type="button" class="c-chip" data-range-years="99">Todo</button>
+    </div>
+    <p class="c-field__help">
+      Disponible: {{ status.available_start | date_es }} → {{ status.available_end | date_es }}
+      (un día computa cuando su vela cierra en UTC).
+    </p>
+  </div>
+
+  <div class="c-field-row">
+    <div class="c-field">
+      <label class="c-field__label" for="daily_below_threshold">Umbral diario</label>
+      <input class="c-field__control" type="number" id="daily_below_threshold"
+             name="daily_below_threshold" min="0" max="100" step="1"
+             value="{{ form.daily_below_threshold }}" required>
+      <p class="c-field__help">Compra diaria si el índice queda por debajo.</p>
+    </div>
+    <div class="c-field">
+      <label class="c-field__label" for="daily_amount_eur">Importe diario (€)</label>
+      <input class="c-field__control" type="text" id="daily_amount_eur"
+             name="daily_amount_eur" inputmode="decimal"
+             value="{{ form.daily_amount_eur }}" required>
+    </div>
+  </div>
+
+  <fieldset class="c-field" style="border: none; padding: 0; margin: 0;">
+    <legend class="c-field__label">Tramos semanales (se evalúan los lunes)</legend>
+    <div class="l-section" data-band-list>
+      {% for band in form.weekly_bands %}
+        <div class="c-field-row" data-band-row>
+          <div class="c-field">
+            <label class="c-field__label" for="band_min_{{ loop.index }}">Mínimo</label>
+            <input class="c-field__control" type="number" id="band_min_{{ loop.index }}"
+                   data-band-min min="0" max="100" step="1" value="{{ band.min_value }}" required>
+          </div>
+          <div class="c-field">
+            <label class="c-field__label" for="band_max_{{ loop.index }}">Máximo</label>
+            <input class="c-field__control" type="number" id="band_max_{{ loop.index }}"
+                   data-band-max min="0" max="100" step="1" value="{{ band.max_value }}" required>
+          </div>
+          <div class="c-field">
+            <label class="c-field__label" for="band_amount_{{ loop.index }}">Importe (€)</label>
+            <input class="c-field__control" type="text" id="band_amount_{{ loop.index }}"
+                   data-band-amount inputmode="decimal" value="{{ band.amount_eur }}" required>
+          </div>
+          <button type="button" class="c-button c-button--ghost" data-band-remove
+                  aria-label="Quitar tramo {{ band.min_value }}–{{ band.max_value }}">
+            {% include "partials/icons/x.svg" %}
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="c-button c-button--secondary" data-band-add>
+      {% include "partials/icons/plus.svg" %}Añadir tramo
+    </button>
+    <input type="hidden" name="strategy_params_json" data-params-json value="">
+  </fieldset>
+
+  <div class="c-field">
+    <label class="c-field__label" for="execution_mode">Modo de ejecución</label>
+    <select class="c-field__control" id="execution_mode" name="execution_mode">
+      <option value="close_same_day"{% if form.execution_mode == "close_same_day" %} selected{% endif %}>
+        Cierre del mismo día (D)
+      </option>
+      <option value="close_next_day"{% if form.execution_mode == "close_next_day" %} selected{% endif %}>
+        Cierre del día siguiente (D+1)
+      </option>
+    </select>
+  </div>
+
+  <button type="submit" class="c-button c-button--primary" id="run-button">
+    {% include "partials/icons/chart-line.svg" %}Ejecutar simulación
+  </button>
+</form>
+
+<template id="band-row-template">
+  <div class="c-field-row" data-band-row>
+    <div class="c-field">
+      <label class="c-field__label">Mínimo</label>
+      <input class="c-field__control" type="number" data-band-min min="0" max="100" step="1" value="10" required>
+    </div>
+    <div class="c-field">
+      <label class="c-field__label">Máximo</label>
+      <input class="c-field__control" type="number" data-band-max min="0" max="100" step="1" value="14" required>
+    </div>
+    <div class="c-field">
+      <label class="c-field__label">Importe (€)</label>
+      <input class="c-field__control" type="text" data-band-amount inputmode="decimal" value="100,00" required>
+    </div>
+    <button type="button" class="c-button c-button--ghost" data-band-remove aria-label="Quitar tramo">
+      {% include "partials/icons/x.svg" %}
+    </button>
+  </div>
+</template>

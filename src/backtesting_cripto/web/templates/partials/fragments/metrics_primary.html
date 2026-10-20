@@ -1,0 +1,26 @@
+<div class="l-grid l-grid--metrics">
+  <div class="c-metric">
+    <span class="c-metric__label">Valor de la cartera</span>
+    <strong class="c-metric__value">{{ metrics.final_portfolio_value_eur | eur }}</strong>
+    <span class="t-caption">al cierre del {{ context.end_date | date_es }} ({{ metrics.final_price_eur | eur }}/BTC)</span>
+  </div>
+  <div class="c-metric">
+    <span class="c-metric__label">Beneficio / pérdida</span>
+    <strong class="c-metric__value {% if metrics.pnl_eur > 0 %}c-metric__delta--positive{% elif metrics.pnl_eur < 0 %}c-metric__delta--negative{% endif %}">{{ metrics.pnl_eur | signed_eur }}</strong>
+    <span class="c-metric__delta {% if metrics.pnl_eur > 0 %}c-metric__delta--positive{% elif metrics.pnl_eur < 0 %}c-metric__delta--negative{% endif %}">
+      {% if metrics.pnl_eur > 0 %}{% include "partials/icons/trending-up.svg" %}
+      {% elif metrics.pnl_eur < 0 %}{% include "partials/icons/trending-down.svg" %}{% endif %}
+      <span>{{ metrics.roi_pct | signed_pct }} en el periodo</span>
+    </span>
+  </div>
+  <div class="c-metric">
+    <span class="c-metric__label">Capital invertido</span>
+    <strong class="c-metric__value">{{ metrics.total_invested_eur | eur }}</strong>
+    <span class="t-caption">{{ metrics.total_operations }} operaciones</span>
+  </div>
+  <div class="c-metric">
+    <span class="c-metric__label">BTC acumulado</span>
+    <strong class="c-metric__value">{{ metrics.btc_accumulated | btc }}</strong>
+    <span class="t-caption">coste medio {{ metrics.average_buy_price_eur | eur }}/BTC</span>
+  </div>
+</div>

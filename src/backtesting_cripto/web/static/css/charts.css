@@ -1,0 +1,99 @@
+/* ==========================================================================
+   charts.css — contenedores de gráfico y alternativa textual (§12, §17.3)
+   ========================================================================== */
+
+@layer charts {
+  .c-chart {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .c-chart__header {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .c-chart__title {
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+  }
+
+  .c-chart__caption {
+    font-size: var(--text-sm);
+    color: var(--color-text-2);
+  }
+
+  /* Alturas fijas por breakpoint (§12.6): nunca aspect-ratio libre. */
+  .c-chart__plot {
+    width: 100%;
+    height: 320px;
+  }
+
+  @media (min-width: 640px) {
+    .c-chart__plot {
+      height: 380px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-chart__plot {
+      height: 420px;
+    }
+  }
+
+  .c-chart__plot--secondary {
+    height: 240px;
+  }
+
+  @media (min-width: 640px) {
+    .c-chart__plot--secondary {
+      height: 280px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .c-chart__plot--secondary {
+      height: 320px;
+    }
+  }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    .c-chart__plot,
+    .c-chart__plot--secondary {
+      height: 240px;
+    }
+  }
+
+  /* --- Alternativa textual accesible (§17.3) --- */
+  .c-chart-alt {
+    font-size: var(--text-sm);
+    color: var(--color-text-2);
+  }
+
+  .c-chart-alt > summary {
+    cursor: pointer;
+    padding-block: var(--space-2);
+    color: var(--color-text-2);
+  }
+
+  .c-chart-alt > summary:hover {
+    color: var(--color-text-1);
+  }
+
+  .c-chart-alt__table {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .c-chart-alt__table th,
+  .c-chart-alt__table td {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+
+  /* --- Marcadores de compra en tooltips: sin cambios, JS usa customdata --- */
+  .js-plotly-holder .modebar {
+    display: none !important;
+  }
+}

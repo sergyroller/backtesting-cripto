@@ -1,0 +1,100 @@
+<div class="l-section">
+  <div class="l-grid l-grid--secondary">
+    <div class="c-metric c-metric--sm">
+      <span class="c-metric__label">Último día cerrado (UTC)</span>
+      <strong class="c-metric__value">{{ status.last_closed_day | date_es }}</strong>
+      <span class="t-caption">Un día computa cuando su vela diaria está cerrada.</span>
+    </div>
+    <div class="c-metric c-metric--sm">
+      <span class="c-metric__label">Cobertura disponible</span>
+      <strong class="c-metric__value" style="font-size: var(--text-md);">
+        {{ status.available_start | date_es }} → {{ status.available_end | date_es }}
+      </strong>
+      <span class="t-caption">Intersección de precios e indicadores.</span>
+    </div>
+    <div class="c-metric c-metric--sm">
+      <span class="c-metric__label">Registros almacenados</span>
+      <strong class="c-metric__value">{{ status.total_records }}</strong>
+      <span class="t-caption">{{ status.datasets | length }} datasets en SQLite.</span>
+    </div>
+    <div class="c-metric c-metric--sm">
+      <span class="c-metric__label">Estado</span>
+      <strong class="c-metric__value" style="font-size: var(--text-md);">
+        {% if status.is_stale %}
+          <span class="c-badge c-badge--warning">Desactualizado</span>
+        {% else %}
+          <span class="c-badge c-badge--positive">Al día</span>
+        {% endif %}
+      </strong>
+      <span class="t-caption">dataset_hash: <span class="t-mono">{{ status.dataset_hash[:16] }}…</span></span>
+    </div>
+  </div>
+
+  {% if status.is_stale %}
+    <div class="c-alert c-alert--warning">
+      {% include "partials/icons/triangle-alert.svg" %}
+      <div>
+        <strong>Los datos están desactualizados</strong>
+        <p class="t-caption">Han pasado más de dos días cerrados desde la última sincronización. Los resultados visibles siguen siendo válidos para el periodo que cubren.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="c-table-wrap">
+    <table class="c-table">
+      <caption>Fuentes locales almacenadas</caption>
+      <thead>
+        <tr>
+          <th scope="col">Fuente</th>
+          <th scope="col">Dataset</th>
+          <th scope="col">Cobertura</th>
+          <th scope="col" class="t-num">Registros</th>
+          <th scope="col">SHA-256</th>
+          <th scope="col">Licencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dataset in status.datasets %}
+          <tr>
+            <td>{{ dataset.source }}</td>
+            <td class="t-mono">{{ dataset.id }}</td>
+            <td>{{ dataset.first_day | date_es }} → {{ dataset.last_day | date_es }}</td>
+            <td class="t-num">{{ dataset.record_count }}</td>
+            <td class="t-mono">{{ dataset.sha256[:12] }}…</td>
+            <td class="t-caption">{{ dataset.license }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="c-card l-section">
+    <h2 class="c-card__title">{% include "partials/icons/refresh-cw.svg" %}Actualizar datos</h2>
+    <p class="t-caption">
+      Descarga el histórico completo desde las fuentes oficiales hasta el último día cerrado
+      y vuelve a validarlo. El proceso puede tardar unos segundos.
+    </p>
+    <div>
+      <button type="button" class="c-button c-button--primary" id="sync-button"
+              hx-post="/ui/data/sync" hx-target="#data-status" hx-swap="innerHTML" hx-indicator="#sync-button">
+        {% include "partials/icons/refresh-cw.svg" %}Actualizar datos
+      </button>
+    </div>
+  </div>
+
+  <div class="c-card l-section">
+    <h2 class="c-card__title">{% include "partials/icons/info.svg" %}Huecos conocidos del índice</h2>
+    <p class="t-caption">
+      El histórico del índice Fear &amp; Greed tiene <strong>39 días sin dato</strong> repartidos en
+      <strong>22 huecos</strong> desde su inicio el 1 feb 2018. La política del sistema es
+      determinista: <strong>un día sin dato no genera compra</strong>. En los gráficos esos días
+      aparecen como cortes honestos en la línea, nunca como cero.
+    </p>
+    <p class="t-caption">
+      Atribuciones: datos del índice de
+      <a class="c-link" href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">alternative.me</a>
+      (CC BY 4.0, republicados por <a class="c-link" href="https://charts.bgeometrics.com/" target="_blank" rel="noopener">BGeometrics</a>)
+      y precios BTC/EUR de <a class="c-link" href="https://www.bitstamp.net/" target="_blank" rel="noopener">Bitstamp</a>.
+    </p>
+  </div>
+</div>

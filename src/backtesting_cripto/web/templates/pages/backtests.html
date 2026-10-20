@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Historial{% endblock %}
+{% block content %}
+<div class="l-section">
+  <div>
+    <h1>Historial de simulaciones</h1>
+    <p class="t-caption">
+      Cada ejecución queda guardada de forma inmutable con sus hashes. Desde el detalle puedes
+      volver a cargar sus parámetros en el simulador.
+    </p>
+  </div>
+
+  {% if runs %}
+    <div class="c-table-wrap">
+      <table class="c-table">
+        <caption>{{ runs | length }} ejecuciones guardadas (más recientes primero)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Creada</th>
+            <th scope="col">Estrategia</th>
+            <th scope="col">Periodo</th>
+            <th scope="col">Modo</th>
+            <th scope="col" class="t-num">Invertido</th>
+            <th scope="col" class="t-num">BTC</th>
+            <th scope="col" class="t-num">P&amp;L</th>
+            <th scope="col" class="t-num">ROI</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+            <tr>
+              <td>{{ run.created_at | date_es }}</td>
+              <td>{{ run.strategy_name }}</td>
+              <td>{{ run.config.start_date | date_es }} – {{ run.config.end_date | date_es }}</td>
+              <td>{% if run.config.execution_mode == "close_next_day" %}D+1{% else %}D{% endif %}</td>
+              <td class="t-num">{{ run.metrics.total_invested_eur | eur }}</td>
+              <td class="t-num">{{ run.metrics.btc_accumulated | btc }}</td>
+              <td class="t-num {% if run.metrics.pnl_eur > 0 %}c-metric__delta--positive{% elif run.metrics.pnl_eur < 0 %}c-metric__delta--negative{% endif %}">
+                {{ run.metrics.pnl_eur | signed_eur }}
+              </td>
+              <td class="t-num">{{ run.metrics.roi_pct | signed_pct }}</td>
+              <td>
+                <a class="c-button c-button--secondary" href="/backtests/{{ run.run_id }}">Ver detalle</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="c-card">
+      <div class="c-empty">
+        {% include "partials/icons/history.svg" %}
+        <p class="c-empty__title">Todavía no hay simulaciones guardadas</p>
+        <p class="c-empty__text">Ejecuta una simulación desde el simulador y aparecerá aquí con todos sus metadatos.</p>
+        <a class="c-button c-button--primary" href="/">Ir al simulador</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

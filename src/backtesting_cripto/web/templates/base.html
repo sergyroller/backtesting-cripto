@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Simulador{% endblock %} · backtesting-cripto</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/charts.css">
+  {#- Script inline anti-FOUC (§8.2): resuelve el tema antes de pintar. -#}
+  <script>
+  (function () {
+    var pref = null;
+    try { pref = localStorage.getItem("theme-preference"); } catch (e) {}
+    if (pref !== "light" && pref !== "dark") {
+      pref = "system";
+    }
+    var dark = pref === "dark" ||
+      (pref === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.dataset.themePreference = pref;
+  })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+  <div class="l-page">
+    <header class="l-header">
+      <div class="l-container l-header__inner">
+        <a class="l-header__brand" href="/">
+          {% include "partials/icons/chart-line.svg" %}
+          <span>backtesting&#8209;cripto</span>
+        </a>
+        <p class="l-header__status" id="data-coverage">
+          {% include "partials/data_coverage.html" %}
+        </p>
+        <div class="l-header__actions">
+          {% include "partials/theme_toggle.html" %}
+        </div>
+      </div>
+      <div class="l-container">
+        <nav class="l-topnav" aria-label="Navegación principal">
+          {% include "partials/topnav.html" %}
+        </nav>
+      </div>
+    </header>
+
+    <main class="l-main l-main--with-bottomnav" id="main">
+      <div class="l-container">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="l-footer">
+      <div class="l-container l-footer__inner">
+        <p class="t-caption">
+          Simulaciones sin comisiones ni deslizamiento · ejecutadas al cierre UTC ·
+          un día computa cuando su vela diaria está cerrada.
+        </p>
+        <p class="t-caption">
+          Datos: <a class="c-link" href="https://alternative.me/crypto/fear-and-greed-index/" rel="noopener" target="_blank">alternative.me</a>,
+          <a class="c-link" href="https://charts.bgeometrics.com/" rel="noopener" target="_blank">BGeometrics</a> y
+          <a class="c-link" href="https://www.bitstamp.net/" rel="noopener" target="_blank">Bitstamp</a>.
+        </p>
+      </div>
+    </footer>
+
+    <nav class="l-bottomnav" aria-label="Navegación principal (móvil)">
+      {% include "partials/bottomnav.html" %}
+    </nav>
+  </div>
+
+  <div id="toasts" class="l-toasts" aria-live="polite"></div>
+
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script src="/static/vendor/plotly-basic.min.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

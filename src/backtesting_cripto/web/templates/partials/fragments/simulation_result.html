@@ -1,0 +1,36 @@
+<div class="l-section" id="simulation-result-inner">
+  {% include "partials/fragments/metrics_primary.html" %}
+  {% include "partials/fragments/charts.html" %}
+  {% include "partials/fragments/metrics_secondary.html" %}
+
+  <div data-tabs>
+    <div class="c-tabs" role="tablist" aria-label="Secciones del resultado">
+      <button type="button" class="c-tabs__tab" role="tab" data-tab="resumen" aria-selected="true" aria-controls="tab-resumen">
+        {% include "partials/icons/chart-line.svg" %}Resumen
+      </button>
+      <button type="button" class="c-tabs__tab" role="tab" data-tab="operaciones" aria-selected="false" aria-controls="tab-operaciones">
+        {% include "partials/icons/list.svg" %}Operaciones
+      </button>
+      <button type="button" class="c-tabs__tab" role="tab" data-tab="supuestos" aria-selected="false" aria-controls="tab-supuestos">
+        {% include "partials/icons/info.svg" %}Supuestos
+      </button>
+    </div>
+
+    <div data-tab-panel="resumen" id="tab-resumen" role="tabpanel">
+      <p class="t-caption">
+        Gráficos interactivos: pasa el cursor (o toca) sobre la línea para ver los valores exactos de cada día.
+        Cada gráfico incluye su alternativa en tabla.
+      </p>
+    </div>
+
+    <div data-tab-panel="operaciones" id="tab-operaciones" role="tabpanel" hidden>
+      <div id="operations-panel">
+        {% include "partials/fragments/operations_table.html" %}
+      </div>
+    </div>
+
+    <div data-tab-panel="supuestos" id="tab-supuestos" role="tabpanel" hidden>
+      {% include "partials/fragments/assumptions.html" %}
+    </div>
+  </div>
+</div>

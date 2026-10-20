@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Detalle de simulación{% endblock %}
+{% block content %}
+<div class="l-section">
+  <div>
+    <p class="t-caption"><a class="c-link" href="/backtests">← Volver al historial</a></p>
+    <h1>Detalle de la simulación</h1>
+    <p class="t-caption">
+      Ejecutada el {{ result.created_at.strftime("%d") }} {{ result.created_at.strftime("%b") }} {{ result.created_at.strftime("%Y") }}
+      · periodo {{ result.config.start_date | date_es }} – {{ result.config.end_date | date_es }}
+      · <span class="t-mono">{{ result.run_id }}</span>
+    </p>
+  </div>
+
+  <div class="l-section">
+    {% include "partials/fragments/metrics_primary.html" %}
+    {% include "partials/fragments/charts.html" %}
+    {% include "partials/fragments/metrics_secondary.html" %}
+
+    <div data-tabs>
+      <div class="c-tabs" role="tablist" aria-label="Secciones del resultado">
+        <button type="button" class="c-tabs__tab" role="tab" data-tab="resumen" aria-selected="true" aria-controls="detail-resumen">
+          {% include "partials/icons/chart-line.svg" %}Resumen
+        </button>
+        <button type="button" class="c-tabs__tab" role="tab" data-tab="operaciones" aria-selected="false" aria-controls="detail-operaciones">
+          {% include "partials/icons/list.svg" %}Operaciones
+        </button>
+        <button type="button" class="c-tabs__tab" role="tab" data-tab="supuestos" aria-selected="false" aria-controls="detail-supuestos">
+          {% include "partials/icons/info.svg" %}Supuestos
+        </button>
+      </div>
+
+      <div data-tab-panel="resumen" id="detail-resumen" role="tabpanel">
+        <div class="c-card l-section">
+          <h2 class="c-card__title">Acciones</h2>
+          <form action="/" method="get">
+            <input type="hidden" name="load_run" value="{{ result.run_id }}">
+            <button type="submit" class="c-button c-button--primary">
+              {% include "partials/icons/sliders-horizontal.svg" %}Cargar estos parámetros en el simulador
+            </button>
+          </form>
+          <p class="t-caption">Las ejecuciones guardadas son inmutables: cargar los parámetros crea una nueva simulación.</p>
+        </div>
+      </div>
+
+      <div data-tab-panel="operaciones" id="detail-operaciones" role="tabpanel" hidden>
+        <div id="operations-panel">
+          {% include "partials/fragments/operations_table.html" %}
+        </div>
+      </div>
+
+      <div data-tab-panel="supuestos" id="detail-supuestos" role="tabpanel" hidden>
+        {% include "partials/fragments/assumptions.html" %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

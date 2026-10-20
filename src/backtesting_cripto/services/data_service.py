@@ -74,6 +74,8 @@ class DataStatus(BaseModel):
     available_ranges: dict[str, AvailableRange]
     available_start: date | None = None
     available_end: date | None = None
+    total_records: int = 0
+    is_stale: bool = False
 
 
 def last_closed_utc_day(now: datetime | None = None) -> date:
@@ -363,11 +365,17 @@ class DataService:
         ranges = self.available_ranges()
 
         primary = next(iter(ranges.values()), None)
+        closed_day = last_closed_utc_day()
+        newest_day = max((record.last_day for record in self._repo.list_datasets()), default=None)
+        is_stale = newest_day is not None and (closed_day - newest_day).days > 2
+
         return DataStatus(
             datasets=datasets,
             dataset_hash=self._raw_store.dataset_hash(),
-            last_closed_day=last_closed_utc_day(),
+            last_closed_day=closed_day,
             available_ranges=ranges,
             available_start=primary.start if primary else None,
             available_end=primary.end if primary else None,
+            total_records=sum(dataset.record_count for dataset in datasets),
+            is_stale=is_stale,
         )

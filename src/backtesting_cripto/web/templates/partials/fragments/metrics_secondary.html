@@ -1,0 +1,26 @@
+<div class="l-grid l-grid--secondary">
+  <div class="c-metric c-metric--sm">
+    <span class="c-metric__label">Drawdown máximo</span>
+    <strong class="c-metric__value {% if metrics.max_drawdown_pct < 0 %}c-metric__delta--negative{% endif %}">{{ metrics.max_drawdown_pct | signed_pct }}</strong>
+  </div>
+  <div class="c-metric c-metric--sm">
+    <span class="c-metric__label">Operaciones por regla</span>
+    <strong class="c-metric__value">{{ metrics.total_operations }}</strong>
+    <span class="t-caption">
+      {% for reason, count in metrics.operations_by_reason.items() %}
+        {{ reason | reason_es }}: {{ count }}{% if not loop.last %} ·{% endif %}
+      {% endfor %}
+    </span>
+  </div>
+  <div class="c-metric c-metric--sm">
+    <span class="c-metric__label">Precio final BTC/EUR</span>
+    <strong class="c-metric__value">{{ metrics.final_price_eur | eur }}</strong>
+  </div>
+  <div class="c-metric c-metric--sm">
+    <span class="c-metric__label">Modo de ejecución</span>
+    <strong class="c-metric__value" style="font-size: var(--text-md);">
+      {% if context.execution_mode == "close_next_day" %}Cierre D+1{% else %}Cierre mismo día{% endif %}
+    </strong>
+    <span class="t-caption">{{ context.start_date | date_es }} – {{ context.end_date | date_es }}</span>
+  </div>
+</div>
